@@ -5,7 +5,7 @@ import { LayoutDashboard, Users, Search, Trash2, Save, X, Eye, EyeOff, Shield, M
 import { getSubjectsList, DEFAULT_SUBJECTS, DEFAULT_APP_FEATURES, ALL_APP_FEATURES, STUDENT_APP_FEATURES, DEFAULT_CONTENT_INFO_CONFIG, ADMIN_PERMISSIONS, APP_VERSION } from '../constants';
 import { fetchChapters, fetchLessonContent } from '../services/groq';
 import { runAutoPilot, runCommandMode } from '../services/autoPilot';
-import { saveChapterData, bulkSaveLinks, checkFirebaseConnection, saveSystemSettings, subscribeToUsers, rtdb, saveUserToLive, db, getChapterData, saveCustomSyllabus, deleteCustomSyllabus, subscribeToUniversalAnalysis, saveAiInteraction, saveSecureKeys, getSecureKeys, subscribeToApiUsage, subscribeToDrafts, resetAllContent } from '../firebase'; // IMPORT FIREBASE
+import { saveChapterData, bulkSaveLinks, checkFirebaseConnection, saveSystemSettings, subscribeToUsers, rtdb, saveUserToLive, db, getChapterData, saveCustomSyllabus, deleteCustomSyllabus, subscribeToUniversalAnalysis, saveAiInteraction, saveSecureKeys, getSecureKeys, subscribeToApiUsage, subscribeToDrafts, resetAllContent, subscribeToDemands } from '../firebase'; // IMPORT FIREBASE
 import { ref, set, onValue, update, push, get } from "firebase/database";
 import { doc, deleteDoc } from "firebase/firestore";
 import { storage } from '../utils/storage';
@@ -1002,6 +1002,7 @@ const AdminDashboardInner: React.FC<Props> = ({ onNavigate, settings, onUpdateSe
           clearInterval(interval);
           unsubUsers();
           unsubReqs();
+          if (unsubDemands) unsubDemands();
       };
   }, []);
 
@@ -1031,8 +1032,10 @@ const AdminDashboardInner: React.FC<Props> = ({ onNavigate, settings, onUpdateSe
       const storedUsersStr = localStorage.getItem('nst_users');
       if (storedUsersStr) setUsers(JSON.parse(storedUsersStr));
       
-      const demandStr = localStorage.getItem('nst_demand_requests');
-      if (demandStr) setDemands(JSON.parse(demandStr));
+      // Subscribe to Demands (Live)
+      const unsubDemands = subscribeToDemands((liveDemands) => {
+          setDemands(liveDemands);
+      });
 
       // const reqStr = localStorage.getItem('nst_recovery_requests');
       // if (reqStr) setRecoveryRequests(JSON.parse(reqStr));
@@ -2431,7 +2434,7 @@ const AdminDashboardInner: React.FC<Props> = ({ onNavigate, settings, onUpdateSe
                   {(hasPermission('MANAGE_PLANS') || currentUser?.role === 'ADMIN') && <DashboardCard icon={Crown} label="Plans Manager" onClick={() => setActiveTab('SUBSCRIPTION_PLANS_EDITOR')} color="blue" />}
                   {(hasPermission('MANAGE_GIFT_CODES') || currentUser?.role === 'ADMIN') && <DashboardCard icon={Gift} label="Gift Codes" onClick={() => setActiveTab('CODES')} color="pink" />}
                   {(hasPermission('MANAGE_SYLLABUS') || currentUser?.role === 'ADMIN') && <DashboardCard icon={Book} label="Subjects" onClick={() => setActiveTab('SUBJECTS_MGR')} color="emerald" />}
-                  {/* {(hasPermission('VIEW_DEMANDS') || currentUser?.role === 'ADMIN') && <DashboardCard icon={Megaphone} label="Demands" onClick={() => setActiveTab('DEMAND')} color="orange" count={demands.length} />} */}
+                  {(hasPermission('VIEW_DEMANDS') || currentUser?.role === 'ADMIN') && <DashboardCard icon={Megaphone} label="Demands" onClick={() => setActiveTab('DEMAND')} color="orange" count={demands.length} />}
                   {(hasPermission('APPROVE_LOGIN_REQS') || currentUser?.role === 'ADMIN') && <DashboardCard icon={Key} label="Login Reqs" onClick={() => setActiveTab('ACCESS')} color="purple" count={recoveryRequests.filter(r => r.status === 'PENDING').length} />}
                   
                   <div className="col-span-2 sm:col-span-3 md:col-span-4 lg:col-span-6 h-px bg-slate-100 my-2"></div>
@@ -3985,7 +3988,7 @@ const AdminDashboardInner: React.FC<Props> = ({ onNavigate, settings, onUpdateSe
                                   <strong>Supported Formats:</strong><br/>
                                   1. Copy from Excel (7 Columns): Q | Opt A | Opt B | Opt C | Opt D | Ans(1-4) | Exp<br/>
                                   2. Vertical List: Q \n 4 Options \n Answer \n Explanation (Multi-line). <br/>
-                                  *Note: For multi-line explanation, ensure next Question starts with "1.", "2." etc.
+                                  *Note: Numbered (Q1.) or Unnumbered questions supported (if 4 options + Answer line provided).
                               </div>
 
                               <textarea 
@@ -8502,7 +8505,7 @@ Capital of India?       Mumbai  Delhi   Kolkata Chennai 2       Delhi is the cap
               </div>
 
               {/* CREDIT PACKAGES */}
-              <div>
+              <div className="mb-8">
                   <h4 className="font-bold text-lg mb-4 text-slate-800">Credit Packages</h4>
                   <div className="grid grid-cols-2 md:grid-cols-5 gap-4">
                       {localSettings.packages.map((pkg) => (
@@ -8515,6 +8518,53 @@ Capital of India?       Mumbai  Delhi   Kolkata Chennai 2       Delhi is the cap
                               </button>
                           </div>
                       ))}
+                  </div>
+              </div>
+
+              {/* STORE FEATURE LIST EDITOR */}
+              <div className="p-4 bg-slate-50 rounded-xl border border-slate-200">
+                  <h4 className="font-bold text-lg mb-4 text-slate-800 flex items-center gap-2">
+                      <List size={20} /> Store Feature Lists (Basic vs Ultra)
+                  </h4>
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                      {/* BASIC FEATURES */}
+                      <div>
+                          <label className="text-xs font-bold text-blue-600 uppercase mb-2 block">Basic Features List</label>
+                          <textarea
+                              className="w-full h-40 p-3 border rounded-xl text-sm"
+                              value={localSettings.storeFeatures?.basic?.join('\n') || ''}
+                              onChange={(e) => setLocalSettings({
+                                  ...localSettings,
+                                  storeFeatures: {
+                                      ...localSettings.storeFeatures,
+                                      basic: e.target.value.split('\n')
+                                  }
+                              })}
+                              placeholder="One feature per line..."
+                          />
+                      </div>
+
+                      {/* ULTRA FEATURES */}
+                      <div>
+                          <label className="text-xs font-bold text-purple-600 uppercase mb-2 block">Ultra Features List</label>
+                          <textarea
+                              className="w-full h-40 p-3 border rounded-xl text-sm"
+                              value={localSettings.storeFeatures?.ultra?.join('\n') || ''}
+                              onChange={(e) => setLocalSettings({
+                                  ...localSettings,
+                                  storeFeatures: {
+                                      ...localSettings.storeFeatures,
+                                      ultra: e.target.value.split('\n')
+                                  }
+                              })}
+                              placeholder="One feature per line..."
+                          />
+                      </div>
+                  </div>
+                  <div className="mt-4 text-right">
+                      <button onClick={handleSaveSettings} className="bg-green-600 text-white px-6 py-2 rounded-xl font-bold shadow hover:bg-green-700">
+                          Save Feature Lists
+                      </button>
                   </div>
               </div>
           </div>

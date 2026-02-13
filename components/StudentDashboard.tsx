@@ -1,7 +1,7 @@
 
 import React, { useState, useEffect } from 'react';
 import { User, Subject, StudentTab, SystemSettings, CreditPackage, WeeklyTest, Chapter, MCQItem, Challenge20 } from '../types';
-import { updateUserStatus, db, saveUserToLive, getChapterData, rtdb, saveAiInteraction } from '../firebase';
+import { updateUserStatus, db, saveUserToLive, getChapterData, rtdb, saveAiInteraction, saveDemandRequest } from '../firebase';
 import { doc, onSnapshot } from 'firebase/firestore';
 import { ref, query, limitToLast, onValue } from 'firebase/database';
 import { getSubjectsList, DEFAULT_APP_FEATURES, ALL_APP_FEATURES } from '../constants';
@@ -1640,12 +1640,17 @@ export const StudentDashboard: React.FC<Props> = ({ user, dailyStudySeconds, onS
                                     details: `${user.classLevel || '10'} ${user.board || 'CBSE'} - ${requestData.subject} - ${requestData.topic} - ${requestData.type}`,
                                     timestamp: new Date().toISOString()
                                 };
-                                const existing = JSON.parse(localStorage.getItem('nst_demand_requests') || '[]');
-                                existing.push(request);
-                                localStorage.setItem('nst_demand_requests', JSON.stringify(existing));
-                                
-                                setShowRequestModal(false);
-                                showAlert("✅ Request Sent! Admin will check it.", 'SUCCESS');
+                                // Save to Firebase for Admin Visibility
+                                saveDemandRequest(request)
+                                    .then(() => {
+                                        setShowRequestModal(false);
+                                        showAlert("✅ Request Sent! Admin will check it.", 'SUCCESS');
+                                        // Also save locally just in case
+                                        const existing = JSON.parse(localStorage.getItem('nst_demand_requests') || '[]');
+                                        existing.push(request);
+                                        localStorage.setItem('nst_demand_requests', JSON.stringify(existing));
+                                    })
+                                    .catch(() => showAlert("Failed to send request.", 'ERROR'));
                             }}
                             className="flex-1 py-3 bg-pink-600 text-white font-bold rounded-xl hover:bg-pink-700 shadow-lg"
                         >

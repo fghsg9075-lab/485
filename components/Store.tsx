@@ -166,8 +166,7 @@ export const Store: React.FC<Props> = ({ user, settings }) => {
   }
 
   // Derived Data
-  const featuresList = tierType === 'BASIC' 
-    ? [
+  const defaultBasicFeatures = [
         'Daily Login Bonus: 10 Credits/Day',
         'Full MCQs Unlocked',
         'Premium Notes (Standard)',
@@ -175,8 +174,9 @@ export const Store: React.FC<Props> = ({ user, settings }) => {
         'AI Videos (2D Basic)',
         'Team Support',
         'Spin Wheel (5 Spins/Day)'
-      ] 
-    : [
+  ];
+
+  const defaultUltraFeatures = [
         'Daily Login Bonus: 20 Credits/Day',
         'Everything in Basic Unlocked',
         'Premium Notes (Deep Dive)',
@@ -184,7 +184,11 @@ export const Store: React.FC<Props> = ({ user, settings }) => {
         'AI Videos (2D + 3D Deep Dive)',
         'Competitive Mode Unlocked 🏆',
         'Spin Wheel (10 Spins/Day)'
-      ];
+  ];
+
+  const featuresList = tierType === 'BASIC'
+    ? (settings?.storeFeatures?.basic?.filter(f => f.trim()) || defaultBasicFeatures)
+    : (settings?.storeFeatures?.ultra?.filter(f => f.trim()) || defaultUltraFeatures);
 
   const currentPrice = selectedPlan 
     ? (tierType === 'BASIC' ? selectedPlan.basicPrice : selectedPlan.ultraPrice)

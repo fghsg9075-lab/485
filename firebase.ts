@@ -525,4 +525,27 @@ export const subscribeToApiUsage = (callback: (data: any) => void) => {
     });
 };
 
+// 10. Demand Requests
+export const saveDemandRequest = async (request: any) => {
+    try {
+        const sanitized = sanitizeForFirestore(request);
+        // Save to RTDB for immediate Admin visibility
+        await set(ref(rtdb, `demand_requests/${request.id}`), sanitized);
+    } catch (e) { console.error("Error saving demand:", e); }
+};
+
+export const subscribeToDemands = (callback: (requests: any[]) => void) => {
+    const q = rtdbQuery(ref(rtdb, "demand_requests"), rtdbLimitToLast(100));
+    return onValue(q, (snapshot) => {
+        const data = snapshot.val();
+        if (data) {
+            const items = Object.values(data);
+            items.sort((a: any, b: any) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime());
+            callback(items);
+        } else {
+            callback([]);
+        }
+    });
+};
+
 export { app, db, rtdb, auth };
