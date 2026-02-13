@@ -794,7 +794,9 @@ export interface HtmlModule {
 export interface PremiumNoteSlot {
   id: string;
   title: string;
+  type?: 'PDF' | 'HTML'; // New: Support HTML content
   url: string;
+  content?: string; // New: HTML content
   color: string; // Hex or Class
   access: 'BASIC' | 'ULTRA'; 
 }

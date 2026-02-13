@@ -4524,12 +4524,14 @@ Capital of India?       Mumbai  Delhi   Kolkata Chennai 2       Delhi is the cap
                                               const newSlots = [...slots];
                                               // Ensure slots exist up to i
                                               for(let k=0; k<=i; k++) {
-                                                  if(!newSlots[k]) newSlots[k] = { id: `pnote-${k}`, title: `Note ${k+1}`, url: '', color: 'blue', access: 'BASIC' };
+                                                  if(!newSlots[k]) newSlots[k] = { id: `pnote-${k}`, title: `Note ${k+1}`, url: '', content: '', type: 'PDF', color: 'blue', access: 'BASIC' };
                                               }
                                               // @ts-ignore
                                               newSlots[i] = { ...newSlots[i], [field]: val };
                                               setPremiumNoteSlots(newSlots);
                                           };
+
+                                          const slotType = slot.type || 'PDF';
 
                                           return (
                                               <div key={i} className="bg-white p-3 rounded-lg border border-purple-100 shadow-sm flex flex-col gap-2">
@@ -4542,6 +4544,14 @@ Capital of India?       Mumbai  Delhi   Kolkata Chennai 2       Delhi is the cap
                                                           placeholder="Title"
                                                           className="flex-1 p-2 border rounded text-xs font-bold"
                                                       />
+                                                      <select
+                                                          value={slotType}
+                                                          onChange={e => updateSlot('type', e.target.value)}
+                                                          className="p-2 border rounded text-xs font-bold bg-slate-100"
+                                                      >
+                                                          <option value="PDF">PDF Link</option>
+                                                          <option value="HTML">HTML Content</option>
+                                                      </select>
                                                       <select 
                                                           value={slot.color} 
                                                           onChange={e => updateSlot('color', e.target.value)}
@@ -4565,13 +4575,23 @@ Capital of India?       Mumbai  Delhi   Kolkata Chennai 2       Delhi is the cap
                                                           <option value="ULTRA">Ultra</option>
                                                       </select>
                                                   </div>
-                                                  <input 
-                                                      type="text" 
-                                                      value={slot.url} 
-                                                      onChange={e => updateSlot('url', e.target.value)}
-                                                      placeholder="PDF URL (Drive Link)..."
-                                                      className="w-full p-2 border rounded text-xs font-mono text-blue-600 bg-slate-50"
-                                                  />
+
+                                                  {slotType === 'HTML' ? (
+                                                      <SimpleRichTextEditor
+                                                          value={slot.content || ''}
+                                                          onChange={html => updateSlot('content', html)}
+                                                          className="w-full p-2 border rounded text-xs min-h-[100px] max-h-[200px] overflow-y-auto bg-white"
+                                                          placeholder="Type notes content here..."
+                                                      />
+                                                  ) : (
+                                                      <input
+                                                          type="text"
+                                                          value={slot.url}
+                                                          onChange={e => updateSlot('url', e.target.value)}
+                                                          placeholder="PDF URL (Drive Link)..."
+                                                          className="w-full p-2 border rounded text-xs font-mono text-blue-600 bg-slate-50"
+                                                      />
+                                                  )}
                                               </div>
                                           );
                                       })}
