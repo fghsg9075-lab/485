@@ -150,7 +150,7 @@ export const MarksheetCard: React.FC<Props> = ({ result, user, settings, onClose
       }
   }, [activeTab, questions]);
 
-  const handleRecommend = async (openModal: boolean = true) => {
+  const handleRecommend = async (openModal: boolean = false) => {
       setRecLoading(true);
       if(openModal) setShowRecModal(true);
 
@@ -1109,6 +1109,7 @@ export const MarksheetCard: React.FC<Props> = ({ result, user, settings, onClose
                                                                     <div className="flex items-center gap-2 mb-2">
                                                                         <span className="text-[10px] font-bold text-orange-700 bg-orange-100 px-2 py-0.5 rounded uppercase">Note</span>
                                                                         <h5 className="text-xs font-bold text-slate-800">{note.title}</h5>
+                                                                        <SpeakButton text={`${note.title}. ${stripHtml(content)}`} className="p-1" iconSize={14} />
                                                                     </div>
                                                                     <div
                                                                         className="prose prose-sm max-w-none text-[11px] text-slate-700 leading-relaxed"
@@ -1233,7 +1234,10 @@ export const MarksheetCard: React.FC<Props> = ({ result, user, settings, onClose
                 </header>
                 <div className="flex-1 overflow-y-auto p-6 bg-slate-50">
                     <div className="max-w-3xl mx-auto bg-white p-6 rounded-3xl shadow-sm border border-slate-100 min-h-[50vh]">
-                        <h1 className="text-2xl font-black text-slate-900 mb-6 border-b pb-4">{viewingNote.title}</h1>
+                        <div className="flex items-center justify-between mb-6 border-b pb-4">
+                             <h1 className="text-2xl font-black text-slate-900">{viewingNote.title}</h1>
+                             <SpeakButton text={`${viewingNote.title}. ${stripHtml(viewingNote.content || '')}`} className="p-2 bg-slate-100 rounded-full hover:bg-slate-200" iconSize={20} />
+                        </div>
                         <div className="prose prose-slate max-w-none prose-headings:font-black" dangerouslySetInnerHTML={{ __html: (viewingNote.content) }} />
                     </div>
                 </div>

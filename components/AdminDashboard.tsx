@@ -27,6 +27,19 @@ pdfjs.GlobalWorkerOptions.workerSrc = `//unpkg.com/pdfjs-dist@${pdfjs.version}/b
 
 const QUESTION_START_REGEX = /^(\*\*)?(Q\s*\d+[.:)]?|\d+[.:)]|Question\s*\d+[.:)]?)(\*\*)?\s*/i;
 
+const looksLikeQuestionBlock = (lines: string[], index: number): boolean => {
+    // Check if line index + 5 (Answer line) exists
+    if (index + 5 >= lines.length) return false;
+
+    // Check Answer pattern on line index + 5
+    const ansLine = lines[index + 5];
+    // Remove Markdown Bolding (**Answer**) if present
+    const cleanAnsLine = ansLine.replace(/^\*\*|\*\*$/g, '');
+
+    // Check if it starts with Answer/Ans/Correct/उत्तर
+    return /^(Answer|Ans|Correct|उत्तर)\s*[:\s-]*\s*/i.test(cleanAnsLine);
+};
+
 interface Props {
   onNavigate: (view: ViewState) => void;
   settings?: SystemSettings;
@@ -1825,7 +1838,7 @@ const AdminDashboardInner: React.FC<Props> = ({ onNavigate, settings, onUpdateSe
                       const line = lines[i];
                       
                       // Check for Question Start
-                      const isQuestionStart = QUESTION_START_REGEX.test(line);
+                      const isQuestionStart = QUESTION_START_REGEX.test(line) || looksLikeQuestionBlock(lines, i);
 
                       if (isQuestionStart) {
                           if (i + 5 >= lines.length) break;
@@ -1852,7 +1865,7 @@ const AdminDashboardInner: React.FC<Props> = ({ onNavigate, settings, onUpdateSe
 
                           while (nextIndex < lines.length) {
                               const line = lines[nextIndex];
-                              const isNewQuestion = QUESTION_START_REGEX.test(line);
+                              const isNewQuestion = QUESTION_START_REGEX.test(line) || looksLikeQuestionBlock(lines, nextIndex);
                               if (isNewQuestion) break;
                               expLines.push(line);
                               nextIndex++;
@@ -1998,7 +2011,7 @@ const AdminDashboardInner: React.FC<Props> = ({ onNavigate, settings, onUpdateSe
                           }
 
                           // 2. CHECK FOR QUESTION START
-                          const isQuestionStart = QUESTION_START_REGEX.test(line);
+                          const isQuestionStart = QUESTION_START_REGEX.test(line) || looksLikeQuestionBlock(lines, i);
 
                           if (isQuestionStart) {
                               // Needs at least Q + 4 Options + Ans = 6 lines remaining
@@ -2035,7 +2048,7 @@ const AdminDashboardInner: React.FC<Props> = ({ onNavigate, settings, onUpdateSe
                               while (nextIndex < lines.length) {
                                   const nextLine = lines[nextIndex];
                                   const isNextTopic = /^<TOPIC:\s*(.*?)>/i.test(nextLine);
-                                  const isNextQ = QUESTION_START_REGEX.test(nextLine);
+                                  const isNextQ = QUESTION_START_REGEX.test(nextLine) || looksLikeQuestionBlock(lines, nextIndex);
 
                                   if (isNextQ || isNextTopic) break;
 
