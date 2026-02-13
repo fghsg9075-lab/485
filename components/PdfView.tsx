@@ -12,6 +12,7 @@ import { CreditConfirmationModal } from './CreditConfirmationModal';
 import { AiInterstitial } from './AiInterstitial';
 import { InfoPopup } from './InfoPopup';
 import { DEFAULT_CONTENT_INFO_CONFIG } from '../constants';
+import { speakWithHighlight, stopSpeaking } from '../utils/ttsHighlighter';
 
 interface Props {
   chapter: Chapter;
@@ -48,106 +49,33 @@ export const PdfView: React.FC<Props> = ({
   // TTS STATE
   const [isSpeaking, setIsSpeaking] = useState(false);
   const [speechRate, setSpeechRate] = useState(1.0);
-  const speechRef = useRef<SpeechSynthesisUtterance | null>(null);
-  
-  // CHUNKING STATE
-  const chunksRef = useRef<string[]>([]);
-  const chunkIndexRef = useRef(0);
+  const contentRef = useRef<HTMLDivElement>(null); // Ref for highlighting container
 
   useEffect(() => {
     // Cleanup speech on unmount or when activePdf changes
     return () => {
-        window.speechSynthesis.cancel();
+        stopSpeaking();
         setIsSpeaking(false);
     };
   }, [activePdf]);
-
-  const speakChunk = () => {
-      if (chunkIndexRef.current >= chunksRef.current.length) {
-          setIsSpeaking(false);
-          return;
-      }
-
-      const text = chunksRef.current[chunkIndexRef.current];
-      const utterance = new SpeechSynthesisUtterance(text);
-      utterance.rate = speechRate;
-
-      // Detect Hindi PER CHUNK for better mixed language support
-      const isHindi = /[\u0900-\u097F]/.test(text);
-      if (isHindi) {
-          utterance.lang = 'hi-IN';
-          const voices = window.speechSynthesis.getVoices();
-          const hindiVoice = voices.find(v => v.lang.includes('hi') || v.name.includes('Hindi') || v.lang === 'hi-IN');
-          if (hindiVoice) utterance.voice = hindiVoice;
-      }
-
-      utterance.onend = () => {
-          chunkIndexRef.current++;
-          speakChunk();
-      };
-      
-      utterance.onerror = (e) => {
-          console.error("TTS Error:", e);
-          setIsSpeaking(false);
-      };
-
-      speechRef.current = utterance;
-      window.speechSynthesis.speak(utterance);
-  };
 
   const handleSpeak = () => {
       if (!activePdf || activePdf.startsWith('http')) return;
       
       if (isSpeaking) {
-          window.speechSynthesis.cancel();
+          stopSpeaking();
           setIsSpeaking(false);
           return;
       }
 
-      // Strip HTML/Markdown for reading
-      let textToRead = activePdf.replace(/<[^>]*>?/gm, ' '); // Remove HTML tags
-      textToRead = textToRead.replace(/&nbsp;/g, ' '); // Decode non-breaking space
-      textToRead = textToRead.replace(/[#*\-]/g, ''); // Remove simple markdown chars
-      textToRead = textToRead.replace(/\s+/g, ' ').trim(); // Normalize spaces
-
-      // Split into chunks (Sentences)
-      // More robust splitting for large texts (10k-20k words)
-      // Split by sentence delimiters, but also handle very long sentences without delimiters
-      // to avoid freezing the browser or hitting API limits.
-      const rawChunks = textToRead.match(/[^.!?\n]+[.!?\n]*/g) || [textToRead];
-      
-      const processedChunks: string[] = [];
-      const MAX_CHUNK_LENGTH = 200; // Character limit for better pacing and UI response
-
-      rawChunks.forEach(chunk => {
-          let currentChunk = chunk.trim();
-          if (currentChunk.length === 0) return;
-
-          if (currentChunk.length > MAX_CHUNK_LENGTH) {
-              // Further split by commas or spaces if too long
-              const subChunks = currentChunk.match(new RegExp(`.{1,${MAX_CHUNK_LENGTH}}(\\s|$)`, 'g')) || [currentChunk];
-              subChunks.forEach(sub => processedChunks.push(sub.trim()));
-          } else {
-              processedChunks.push(currentChunk);
-          }
-      });
-
-      chunksRef.current = processedChunks;
-      chunkIndexRef.current = 0;
-
-      if (chunksRef.current.length === 0) return;
-
-      setIsSpeaking(true);
-
-      // Ensure voices are loaded (Chrome/Chromium fix)
-      if (window.speechSynthesis.getVoices().length === 0) {
-          const handleVoicesChanged = () => {
-              speakChunk();
-              window.speechSynthesis.removeEventListener('voiceschanged', handleVoicesChanged);
-          };
-          window.speechSynthesis.addEventListener('voiceschanged', handleVoicesChanged);
-      } else {
-          speakChunk();
+      if (contentRef.current) {
+          setIsSpeaking(true);
+          speakWithHighlight(
+              contentRef.current,
+              speechRate,
+              activeLang === 'HINDI' ? 'hi-IN' : 'en-US',
+              () => setIsSpeaking(false)
+          );
       }
   };
 
@@ -159,11 +87,9 @@ export const PdfView: React.FC<Props> = ({
       
       // If speaking, restart with new rate from current chunk
       if (isSpeaking) {
-          window.speechSynthesis.cancel();
-          // Small delay to ensure cancellation takes effect
-          setTimeout(() => {
-              speakChunk();
-          }, 50);
+          // Restart with new speed
+          handleSpeak(); // Stop
+          setTimeout(() => handleSpeak(), 100); // Start
       }
   };
 
@@ -651,7 +577,8 @@ export const PdfView: React.FC<Props> = ({
                        ></iframe>
                    ) : (
                        <div 
-                           className="absolute inset-0 bg-white p-8 overflow-y-auto prose max-w-none"
+                           ref={contentRef}
+                           className="absolute inset-0 bg-white p-8 overflow-y-auto prose max-w-none font-sans"
                            style={{
                                width: `${100/zoom}%`,
                                height: `${100/zoom}%`,
@@ -784,6 +711,70 @@ export const PdfView: React.FC<Props> = ({
                            </button>
                        )}
                    </div>
+
+                   {/* TOPIC NOTES SECTION */}
+                   {contentData.topicNotes && contentData.topicNotes.length > 0 && (() => {
+                       const notes = contentData.topicNotes;
+                       // Group by Topic
+                       const grouped: Record<string, any[]> = {};
+                       notes.forEach((n: any) => {
+                           const t = n.topic || 'General';
+                           if (!grouped[t]) grouped[t] = [];
+                           grouped[t].push(n);
+                       });
+                       const topics = Object.keys(grouped);
+
+                       return (
+                           <div className="space-y-4 mt-6">
+                               <h4 className="font-bold text-slate-800 flex items-center gap-2 px-1">
+                                   <FileText size={18} className="text-orange-600" /> Topic Notes
+                               </h4>
+                               <div className="space-y-3">
+                                   {topics.map((topic, idx) => (
+                                       <div key={idx} className="bg-white rounded-xl border border-orange-100 overflow-hidden shadow-sm">
+                                           <div className="bg-orange-50 px-4 py-3 flex items-center justify-between">
+                                               <h5 className="font-bold text-orange-900 text-sm">{topic}</h5>
+                                               <span className="text-[10px] font-bold text-orange-600 bg-white px-2 py-0.5 rounded-full border border-orange-200">
+                                                   {grouped[topic].length} Notes
+                                               </span>
+                                           </div>
+                                           <div className="p-2 space-y-1">
+                                               {grouped[topic].map((note, nIdx) => (
+                                                   <button
+                                                       key={nIdx}
+                                                       onClick={() => {
+                                                           if (note.isPremium) {
+                                                               const isSubscribed = user.isPremium && user.subscriptionEndDate && new Date(user.subscriptionEndDate) > new Date();
+                                                               if (!isSubscribed && user.role !== 'ADMIN') {
+                                                                    setAlertConfig({isOpen: true, message: "🔒 Premium Content! Please upgrade your plan to access this note."});
+                                                                    return;
+                                                               }
+                                                           }
+                                                           // Open Content
+                                                           if (note.content) {
+                                                               setActivePdf(note.content);
+                                                           } else {
+                                                               setAlertConfig({isOpen: true, message: "Empty content."});
+                                                           }
+                                                       }}
+                                                       className="w-full text-left p-3 rounded-lg hover:bg-slate-50 flex items-center justify-between group transition-colors"
+                                                   >
+                                                       <div className="flex items-center gap-3">
+                                                           <div className={`w-8 h-8 rounded-full flex items-center justify-center ${note.isPremium ? 'bg-purple-100 text-purple-600' : 'bg-slate-100 text-slate-500'}`}>
+                                                               <FileText size={14} />
+                                                           </div>
+                                                           <span className="text-sm font-medium text-slate-700 group-hover:text-blue-600 transition-colors line-clamp-1">{note.title || 'Untitled Note'}</span>
+                                                       </div>
+                                                       {note.isPremium && <Lock size={12} className="text-purple-400" />}
+                                                   </button>
+                                               ))}
+                                           </div>
+                                       </div>
+                                   ))}
+                               </div>
+                           </div>
+                       );
+                   })()}
 
                    {/* HTML MODULES */}
                    {contentData.htmlModules && contentData.htmlModules.map((mod: any, idx: number) => {
