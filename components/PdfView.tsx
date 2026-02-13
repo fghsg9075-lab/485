@@ -301,7 +301,11 @@ export const PdfView: React.FC<Props> = ({
       }
 
       if (hasAccess) {
-          setActivePdf(slot.url);
+          if (slot.type === 'HTML' && slot.content) {
+              setActivePdf(slot.content);
+          } else {
+              setActivePdf(slot.url);
+          }
           return;
       }
 
