@@ -3,7 +3,7 @@ import { Subject } from './types';
 // @ts-ignore
 import { COMPETITION_DATA } from './competition_syllabus';
 
-export const APP_VERSION = "1.0.0"; // NEW: Current App Version
+export const APP_VERSION = "1.0.1"; // NEW: Current App Version
 export const ADMIN_EMAIL = "nadiman0636indo@gmail.com";
 export const SUPPORT_EMAIL = "nadiman0636indo@gmail.com";
 
