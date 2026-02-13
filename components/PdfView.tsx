@@ -464,20 +464,51 @@ export const PdfView: React.FC<Props> = ({
        {activePdf ? (
            <div ref={pdfContainerRef} className="h-[calc(100vh-80px)] w-full bg-slate-100 relative overflow-auto">
                {/* WATERMARK OVERLAY (If Configured) */}
-               {(contentData?.watermarkText || contentData?.watermarkConfig) && (
-                   <div className="absolute inset-0 z-10 pointer-events-none overflow-hidden select-none">
-                       {/* Priority to new Config, Fallback to Legacy Text */}
-                       {(() => {
-                           const config = contentData.watermarkConfig || { 
-                               text: contentData.watermarkText, 
-                               opacity: 0.3, 
-                               color: '#9ca3af', // gray-400 
-                               backgroundColor: '#000000', // black
-                               fontSize: 40,
-                               isRepeating: true,
-                               rotation: -12
-                           };
+               {(() => {
+                   // 1. Check Global Switch (Admin Dashboard)
+                   if (settings?.watermarkConfig?.enabled === false) return null;
 
+                   // 2. Determine Effective Config (Global > Local override if needed, or Local > Global?
+                   // Usually Global sets the template, but Chapter might want custom text.
+                   // Let's use Global as base, allow Content to override Text/Style if provided,
+                   // BUT if Global is enabled, we show it.
+
+                   // Fallback logic:
+                   // If content has specific config, use it.
+                   // ELSE use Global config.
+                   // ELSE use legacy content text.
+
+                   const globalConfig = settings?.watermarkConfig;
+                   const localConfig = contentData?.watermarkConfig;
+
+                   // Merge: Local overrides Global defaults if present
+                   const config = {
+                       ...{
+                           text: settings?.appName || 'IIC',
+                           opacity: 0.2,
+                           color: '#9ca3af',
+                           backgroundColor: 'transparent',
+                           fontSize: 24,
+                           isRepeating: true,
+                           rotation: -12,
+                           enabled: true
+                       },
+                       ...globalConfig, // Global Settings applied
+                       ...localConfig,  // Chapter specific overrides (if any)
+                   };
+
+                   // Legacy Text Fallback (if config text is default but legacy exists)
+                   if (contentData?.watermarkText && !localConfig) {
+                       config.text = contentData.watermarkText;
+                   }
+
+                   // Final check if enabled (Local might have disabled it too, if we allowed that)
+                   if (config.enabled === false) return null;
+                   if (!config.text) return null;
+
+                   return (
+                   <div className="absolute inset-0 z-10 pointer-events-none overflow-hidden select-none">
+                       {(() => {
                            if (config.isRepeating !== false) {
                                // REPEATING PATTERN
                                return (
@@ -530,7 +561,8 @@ export const PdfView: React.FC<Props> = ({
                            }
                        })()}
                    </div>
-               )}
+                   );
+               })()}
                
                {/* POP-OUT BLOCKER (Top Bar) */}
                <div className="absolute top-0 left-0 right-0 h-16 z-20 bg-transparent"></div>
