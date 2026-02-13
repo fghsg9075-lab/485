@@ -366,10 +366,13 @@ export const McqView: React.FC<Props> = ({
       const subjectId = subject.id;
       let progress = updatedUser.progress[subjectId] || { currentChapterIndex: 0, totalMCQsSolved: 0 };
       progress.totalMCQsSolved += attemptsCount;
+
+      const threshold = settings?.mcqUnlockThreshold || 100;
       let leveledUp = false;
-      if (progress.totalMCQsSolved >= 100) {
+
+      if (progress.totalMCQsSolved >= threshold) {
           progress.currentChapterIndex += 1;
-          progress.totalMCQsSolved = progress.totalMCQsSolved - 100;
+          progress.totalMCQsSolved = progress.totalMCQsSolved - threshold;
           leveledUp = true;
       }
       updatedUser.progress[subjectId] = progress;
@@ -413,7 +416,7 @@ export const McqView: React.FC<Props> = ({
       }
 
       if (leveledUp) {
-          setAlertConfig({isOpen: true, title: "Level Up!", message: `🎉 Congratulations! You cleared 100 MCQs.\n\n🔓 Next Chapter Unlocked!`});
+          setAlertConfig({isOpen: true, title: "Level Up!", message: `🎉 Congratulations! You cleared ${threshold} MCQs.\n\n🔓 Next Chapter Unlocked!`});
       }
       
       // Store data for analysis view (Fallback to usedData if filtered set is empty to ensure AI Analysis has data)

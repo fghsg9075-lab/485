@@ -295,9 +295,10 @@ export const PdfView: React.FC<Props> = ({
       // Check Access
       let hasAccess = false;
       if (user.role === 'ADMIN') hasAccess = true;
+      else if (slot.access === 'FREE') hasAccess = true;
       else if (user.isPremium) {
           if (user.subscriptionLevel === 'ULTRA') hasAccess = true;
-          else if (user.subscriptionLevel === 'BASIC' && slot.access === 'BASIC') hasAccess = true;
+          else if (user.subscriptionLevel === 'BASIC' && (slot.access === 'BASIC' || slot.access === 'FREE')) hasAccess = true;
       }
 
       if (hasAccess) {

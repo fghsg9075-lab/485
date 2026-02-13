@@ -4510,25 +4510,43 @@ Capital of India?       Mumbai  Delhi   Kolkata Chennai 2       Delhi is the cap
                                   <p className="text-[10px] text-purple-600 mt-1">These notes are only visible to Paid/Ultra users.</p>
                               </div>
 
-                              {/* PREMIUM NOTES COLLECTION (20 SLOTS) */}
+                              {/* PREMIUM NOTES COLLECTION (Dynamic) */}
                               <div className="bg-gradient-to-br from-purple-50 to-indigo-50 p-4 rounded-xl border border-purple-200">
-                                  <h4 className="font-bold text-purple-900 mb-4 flex items-center gap-2">
-                                      <LayersIcon size={18} /> Premium Notes Collection (Max 20)
-                                  </h4>
+                                  <div className="flex justify-between items-center mb-4">
+                                      <h4 className="font-bold text-purple-900 flex items-center gap-2">
+                                          <LayersIcon size={18} /> Premium Notes Collection (Unlimited)
+                                      </h4>
+                                      <button
+                                          onClick={() => setPremiumNoteSlots([...premiumNoteSlots, {
+                                              id: `pnote-${Date.now()}`,
+                                              title: `New Note ${premiumNoteSlots.length + 1}`,
+                                              url: '',
+                                              content: '',
+                                              type: 'PDF',
+                                              color: 'blue',
+                                              access: 'BASIC'
+                                          }])}
+                                          className="bg-purple-600 text-white px-3 py-1.5 rounded-lg text-xs font-bold hover:bg-purple-700 shadow-sm"
+                                      >
+                                          + Add Note
+                                      </button>
+                                  </div>
+
                                   <div className="space-y-3 max-h-[60vh] overflow-y-auto pr-2 custom-scrollbar">
-                                      {Array.from({length: 20}).map((_, i) => {
-                                          const slots = premiumNoteSlots || [];
-                                          const slot = slots[i] || { id: `pnote-${i}`, title: `Note ${i+1}`, url: '', color: 'blue', access: 'BASIC' };
-                                          
+                                      {premiumNoteSlots.length === 0 && <p className="text-center text-slate-400 py-4 text-xs italic">No notes added. Click '+ Add Note' to create.</p>}
+                                      {premiumNoteSlots.map((slot, i) => {
                                           const updateSlot = (field: keyof PremiumNoteSlot, val: any) => {
-                                              const newSlots = [...slots];
-                                              // Ensure slots exist up to i
-                                              for(let k=0; k<=i; k++) {
-                                                  if(!newSlots[k]) newSlots[k] = { id: `pnote-${k}`, title: `Note ${k+1}`, url: '', content: '', type: 'PDF', color: 'blue', access: 'BASIC' };
-                                              }
+                                              const newSlots = [...premiumNoteSlots];
                                               // @ts-ignore
                                               newSlots[i] = { ...newSlots[i], [field]: val };
                                               setPremiumNoteSlots(newSlots);
+                                          };
+
+                                          const removeSlot = () => {
+                                              if(confirm("Remove this note?")) {
+                                                  const newSlots = premiumNoteSlots.filter((_, idx) => idx !== i);
+                                                  setPremiumNoteSlots(newSlots);
+                                              }
                                           };
 
                                           const slotType = slot.type || 'PDF';
@@ -4571,9 +4589,17 @@ Capital of India?       Mumbai  Delhi   Kolkata Chennai 2       Delhi is the cap
                                                           onChange={e => updateSlot('access', e.target.value)}
                                                           className="p-2 border rounded text-xs font-bold bg-slate-50"
                                                       >
+                                                          <option value="FREE">Free</option>
                                                           <option value="BASIC">Basic</option>
                                                           <option value="ULTRA">Ultra</option>
                                                       </select>
+                                                      <button
+                                                          onClick={removeSlot}
+                                                          className="p-2 text-red-400 hover:text-red-600 hover:bg-red-50 rounded"
+                                                          title="Remove Note"
+                                                      >
+                                                          <Trash2 size={14} />
+                                                      </button>
                                                   </div>
 
                                                   {slotType === 'HTML' ? (
@@ -8850,15 +8876,27 @@ Capital of India?       Mumbai  Delhi   Kolkata Chennai 2       Delhi is the cap
                   <h4 className="font-bold text-lg mb-4 text-slate-800 flex items-center gap-2">MCQ Settings <span className="text-[10px] bg-purple-200 text-purple-800 px-2 py-0.5 rounded-full uppercase">Restrictions & Costs</span></h4>
                   <div className="bg-white p-3 rounded-lg border border-purple-100 mb-4 flex items-center justify-between">
                       <div>
-                          <p className="font-bold text-slate-700 text-sm">MCQ Chapter Lock (100 Qs)</p>
-                          <p className="text-[10px] text-slate-500">Require 100 solved MCQs to unlock next chapter.</p>
+                          <p className="font-bold text-slate-700 text-sm">MCQ Chapter Lock Logic</p>
+                          <p className="text-[10px] text-slate-500">Require {localSettings.mcqUnlockThreshold || 100} solved MCQs to unlock next chapter.</p>
                       </div>
-                      <input 
-                          type="checkbox" 
-                          checked={localSettings.enableMcqUnlockRestriction !== false} 
-                          onChange={() => toggleSetting('enableMcqUnlockRestriction')} 
-                          className="w-5 h-5 accent-purple-600" 
-                      />
+                      <div className="flex items-center gap-4">
+                          <div className="flex items-center gap-2 bg-slate-50 px-2 py-1 rounded-lg border border-slate-200">
+                              <span className="text-[10px] font-bold text-slate-500 uppercase">Target:</span>
+                              <input
+                                  type="number"
+                                  value={localSettings.mcqUnlockThreshold || 100}
+                                  onChange={(e) => setLocalSettings({...localSettings, mcqUnlockThreshold: Number(e.target.value)})}
+                                  className="w-16 p-1 text-xs font-bold border rounded text-center"
+                                  min="1"
+                              />
+                          </div>
+                          <input
+                              type="checkbox"
+                              checked={localSettings.enableMcqUnlockRestriction !== false}
+                              onChange={() => toggleSetting('enableMcqUnlockRestriction')}
+                              className="w-5 h-5 accent-purple-600"
+                          />
+                      </div>
                   </div>
 
                   <div className="bg-white p-3 rounded-lg border border-purple-100 mb-4 flex items-center justify-between">
