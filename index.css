@@ -1,0 +1,80 @@
+
+/* Vercel Toast Hide */
+.vercel-toast {
+    display: none !important;
+}
+
+/* Custom Animations for Chat & UI */
+@keyframes glow {
+    0% { box-shadow: 0 0 5px rgba(255, 255, 255, 0.5); }
+    50% { box-shadow: 0 0 20px rgba(255, 255, 255, 0.8), 0 0 10px rgba(255, 215, 0, 0.5); }
+    100% { box-shadow: 0 0 5px rgba(255, 255, 255, 0.5); }
+}
+
+.animate-glow {
+    animation: glow 2s infinite;
+}
+
+/* Hide scrollbar for clean UI */
+.no-scrollbar::-webkit-scrollbar {
+    display: none;
+}
+.no-scrollbar {
+    -ms-overflow-style: none;
+    scrollbar-width: none;
+}
+
+/* Dark Mode - Fully Black (AMOLED) */
+.dark-mode {
+    background-color: #000000 !important;
+    color: #ffffff !important;
+}
+
+.dark-mode .bg-white {
+    background-color: #000000 !important;
+    border-color: #333333 !important;
+}
+
+.dark-mode .bg-slate-50, 
+.dark-mode .bg-slate-100 {
+    background-color: #111111 !important;
+    border-color: #333333 !important;
+}
+
+.dark-mode .text-slate-900,
+.dark-mode .text-slate-800,
+.dark-mode .text-slate-700,
+.dark-mode .text-slate-600 {
+    color: #e2e8f0 !important;
+}
+
+.dark-mode .text-slate-500,
+.dark-mode .text-slate-400 {
+    color: #94a3b8 !important;
+}
+
+/* Ensure inputs are visible */
+.dark-mode input, 
+.dark-mode select, 
+.dark-mode textarea {
+    background-color: #222222 !important;
+    color: #ffffff !important;
+    border-color: #444444 !important;
+}
+
+/* Dialogs & Modals */
+.dark-mode .bg-white.rounded-2xl,
+.dark-mode .bg-white.rounded-3xl {
+    background-color: #111111 !important;
+    border: 1px solid #333333 !important;
+}
+
+/* Shadows */
+.dark-mode .shadow-sm,
+.dark-mode .shadow-md,
+.dark-mode .shadow-lg,
+.dark-mode .shadow-xl,
+.dark-mode .shadow-2xl {
+    box-shadow: none !important;
+    border: 1px solid #333333 !important;
+}
