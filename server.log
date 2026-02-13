@@ -8,7 +8,22 @@
   ➜  Local:   http://localhost:5000/
   ➜  Network: http://192.168.0.2:5000/
 [BABEL] Note: The code generator has deoptimised the styling of /app/components/AdminDashboard.tsx as it exceeds the max of 500KB.
+ feature-topic-notes-accordion-17260877958787365157
 7:17:28 AM [vite] (client) hmr update /App.tsx, /components/ChapterSelection.tsx, /components/LessonView.tsx, /components/Auth.tsx, /components/StudentDashboard.tsx, /components/PremiumModal.tsx, /components/MarksheetCard.tsx, /components/AdminDashboard.tsx, /components/StudentAiAssistant.tsx, /components/admin/ChallengeCreator20.tsx, /components/RedeemSection.tsx, /components/VideoPlaylistView.tsx, /components/AudioPlaylistView.tsx, /components/PdfView.tsx, /components/McqView.tsx, /components/HistoryPage.tsx, /components/UniversalInfoPage.tsx, /components/UniversalChat.tsx, /components/AiHistoryPage.tsx, /components/AiDeepAnalysis.tsx, /components/CustomBloggerPage.tsx, /components/ReferralPopup.tsx
 7:17:34 AM [vite] (client) hmr update /App.tsx, /components/StudentDashboard.tsx, /components/AdminDashboard.tsx, /components/StudentAiAssistant.tsx, /components/admin/ChallengeCreator20.tsx
 7:22:21 AM [vite] (client) hmr update /App.tsx, /components/ChapterSelection.tsx, /components/LessonView.tsx, /components/Auth.tsx, /components/StudentDashboard.tsx, /components/PremiumModal.tsx, /components/MarksheetCard.tsx, /components/AdminDashboard.tsx, /components/StudentAiAssistant.tsx, /components/admin/ChallengeCreator20.tsx, /components/RedeemSection.tsx, /components/VideoPlaylistView.tsx, /components/AudioPlaylistView.tsx, /components/PdfView.tsx, /components/McqView.tsx, /components/HistoryPage.tsx, /components/UniversalInfoPage.tsx, /components/UniversalChat.tsx, /components/AiHistoryPage.tsx, /components/AiDeepAnalysis.tsx, /components/CustomBloggerPage.tsx, /components/ReferralPopup.tsx
 7:22:28 AM [vite] (client) hmr update /App.tsx, /components/StudentDashboard.tsx, /components/AdminDashboard.tsx, /components/StudentAiAssistant.tsx, /components/admin/ChallengeCreator20.tsx
+
+4:22:26 AM [vite] (client) hmr update /components/LessonView.tsx
+4:25:47 AM [vite] (client) hmr update /components/PdfView.tsx
+5:15:51 AM [vite] (client) hmr update /components/AdminDashboard.tsx
+5:16:40 AM [vite] (client) hmr update /components/PdfView.tsx
+5:59:52 AM [vite] (client) hmr update /components/AdminDashboard.tsx
+6:00:04 AM [vite] (client) hmr update /components/ChapterSelection.tsx
+6:01:24 AM [vite] (client) hmr update /components/McqView.tsx
+6:01:44 AM [vite] (client) hmr update /components/PdfView.tsx
+6:27:41 AM [vite] (client) hmr update /components/AdminDashboard.tsx
+8:42:13 AM [vite] (client) hmr update /components/PdfView.tsx
+8:42:18 AM [vite] (client) hmr update /components/PdfView.tsx
+8:53:24 AM [vite] (client) hmr update /components/LessonView.tsx, /components/PdfView.tsx
+main
