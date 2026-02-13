@@ -5,7 +5,7 @@ import remarkMath from 'remark-math';
 import rehypeKatex from 'rehype-katex';
 import 'katex/dist/katex.min.css';
 import { Chapter, User, Subject, SystemSettings, HtmlModule, PremiumNoteSlot } from '../types';
-import { FileText, Lock, ArrowLeft, Crown, Star, CheckCircle, AlertCircle, Globe, Maximize, Layers, HelpCircle, Minus, Plus, Volume2, Square, Zap } from 'lucide-react';
+import { FileText, Lock, ArrowLeft, Crown, Star, CheckCircle, AlertCircle, Globe, Maximize, Layers, HelpCircle, Minus, Plus, Volume2, Square, Zap, ChevronDown, ChevronRight } from 'lucide-react';
 import { CustomAlert } from './CustomDialogs';
 import { getChapterData, saveUserToLive } from '../firebase';
 import { CreditConfirmationModal } from './CreditConfirmationModal';
@@ -37,7 +37,8 @@ export const PdfView: React.FC<Props> = ({
   const [activePdf, setActivePdf] = useState<string | null>(null);
   const [activeLang, setActiveLang] = useState<'ENGLISH' | 'HINDI'>('ENGLISH'); // NEW: Language State
   const [pendingPdf, setPendingPdf] = useState<{type: string, price: number, link: string} | null>(null);
-  
+  const [expandedTopics, setExpandedTopics] = useState<Record<string, boolean>>({});
+
   // ZOOM STATE
   const [zoom, setZoom] = useState(1);
   const handleZoomIn = () => setZoom(prev => Math.min(prev + 0.25, 3));
@@ -750,8 +751,11 @@ export const PdfView: React.FC<Props> = ({
                    </div>
 
                    {/* TOPIC NOTES SECTION */}
-                   {contentData.topicNotes && contentData.topicNotes.length > 0 && (() => {
-                       const notes = contentData.topicNotes;
+                   {contentData.topicNotes && (Array.isArray(contentData.topicNotes) ? contentData.topicNotes.length > 0 : Object.keys(contentData.topicNotes).length > 0) && (() => {
+                       // Normalize to array
+                       const rawNotes = contentData.topicNotes;
+                       const notes = Array.isArray(rawNotes) ? rawNotes : Object.values(rawNotes);
+
                        // Group by Topic
                        const grouped: Record<string, any[]> = {};
                        notes.forEach((n: any) => {
@@ -767,47 +771,60 @@ export const PdfView: React.FC<Props> = ({
                                    <FileText size={18} className="text-orange-600" /> Topic Notes
                                </h4>
                                <div className="space-y-3">
-                                   {topics.map((topic, idx) => (
+                                   {topics.map((topic, idx) => {
+                                       const isExpanded = expandedTopics[topic];
+                                       const count = grouped[topic].length;
+
+                                       return (
                                        <div key={idx} className="bg-white rounded-xl border border-orange-100 overflow-hidden shadow-sm">
-                                           <div className="bg-orange-50 px-4 py-3 flex items-center justify-between">
-                                               <h5 className="font-bold text-orange-900 text-sm">{topic}</h5>
-                                               <span className="text-[10px] font-bold text-orange-600 bg-white px-2 py-0.5 rounded-full border border-orange-200">
-                                                   {grouped[topic].length} Notes
-                                               </span>
-                                           </div>
-                                           <div className="p-2 space-y-1">
-                                               {grouped[topic].map((note, nIdx) => (
-                                                   <button
-                                                       key={nIdx}
-                                                       onClick={() => {
-                                                           if (note.isPremium) {
-                                                               const isSubscribed = user.isPremium && user.subscriptionEndDate && new Date(user.subscriptionEndDate) > new Date();
-                                                               if (!isSubscribed && user.role !== 'ADMIN') {
-                                                                    setAlertConfig({isOpen: true, message: "🔒 Premium Content! Please upgrade your plan to access this note."});
-                                                                    return;
+                                           <button
+                                               onClick={() => setExpandedTopics(prev => ({...prev, [topic]: !prev[topic]}))}
+                                               className="w-full bg-orange-50 px-4 py-3 flex items-center justify-between hover:bg-orange-100 transition-colors"
+                                           >
+                                               <div className="flex items-center gap-2">
+                                                   <h5 className="font-bold text-orange-900 text-sm">{topic}</h5>
+                                                   <span className="text-[10px] font-bold text-orange-600 bg-white px-2 py-0.5 rounded-full border border-orange-200">
+                                                       {count} Note{count !== 1 ? 's' : ''}
+                                                   </span>
+                                               </div>
+                                               {isExpanded ? <ChevronDown size={16} className="text-orange-400" /> : <ChevronRight size={16} className="text-orange-400" />}
+                                           </button>
+
+                                           {isExpanded && (
+                                               <div className="p-2 space-y-1 animate-in slide-in-from-top-2 duration-200">
+                                                   {grouped[topic].map((note, nIdx) => (
+                                                       <button
+                                                           key={nIdx}
+                                                           onClick={() => {
+                                                               if (note.isPremium) {
+                                                                   const isSubscribed = user.isPremium && user.subscriptionEndDate && new Date(user.subscriptionEndDate) > new Date();
+                                                                   if (!isSubscribed && user.role !== 'ADMIN') {
+                                                                        setAlertConfig({isOpen: true, message: "🔒 Premium Content! Please upgrade your plan to access this note."});
+                                                                        return;
+                                                                   }
                                                                }
-                                                           }
-                                                           // Open Content
-                                                           if (note.content) {
-                                                               setActivePdf(note.content);
-                                                           } else {
-                                                               setAlertConfig({isOpen: true, message: "Empty content."});
-                                                           }
-                                                       }}
-                                                       className="w-full text-left p-3 rounded-lg hover:bg-slate-50 flex items-center justify-between group transition-colors"
-                                                   >
-                                                       <div className="flex items-center gap-3">
-                                                           <div className={`w-8 h-8 rounded-full flex items-center justify-center ${note.isPremium ? 'bg-purple-100 text-purple-600' : 'bg-slate-100 text-slate-500'}`}>
-                                                               <FileText size={14} />
+                                                               // Open Content
+                                                               if (note.content) {
+                                                                   setActivePdf(note.content);
+                                                               } else {
+                                                                   setAlertConfig({isOpen: true, message: "Empty content."});
+                                                               }
+                                                           }}
+                                                           className="w-full text-left p-3 rounded-lg hover:bg-slate-50 flex items-center justify-between group transition-colors border border-transparent hover:border-slate-100"
+                                                       >
+                                                           <div className="flex items-center gap-3">
+                                                               <div className={`w-8 h-8 rounded-full flex items-center justify-center ${note.isPremium ? 'bg-purple-100 text-purple-600' : 'bg-slate-100 text-slate-500'}`}>
+                                                                   <FileText size={14} />
+                                                               </div>
+                                                               <span className="text-sm font-medium text-slate-700 group-hover:text-blue-600 transition-colors line-clamp-1">{note.title || 'Untitled Note'}</span>
                                                            </div>
-                                                           <span className="text-sm font-medium text-slate-700 group-hover:text-blue-600 transition-colors line-clamp-1">{note.title || 'Untitled Note'}</span>
-                                                       </div>
-                                                       {note.isPremium && <Lock size={12} className="text-purple-400" />}
-                                                   </button>
-                                               ))}
-                                           </div>
+                                                           {note.isPremium ? <Lock size={12} className="text-purple-400" /> : <ChevronRight size={14} className="text-slate-300 group-hover:text-slate-400" />}
+                                                       </button>
+                                                   ))}
+                                               </div>
+                                           )}
                                        </div>
-                                   ))}
+                                   )})}
                                </div>
                            </div>
                        );
