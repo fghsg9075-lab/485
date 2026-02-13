@@ -106,7 +106,7 @@ export const MarksheetCard: React.FC<Props> = ({ result, user, settings, onClose
   const [confirmConfig, setConfirmConfig] = useState<{isOpen: boolean, title: string, message: string, onConfirm: () => void}>({isOpen: false, title: '', message: '', onConfirm: () => {}});
 
   // RECOMMENDATION STATE
-  const [showRecModal, setShowRecModal] = useState(false);
+  // const [showRecModal, setShowRecModal] = useState(false); // REMOVED as per user request
   const [recommendations, setRecommendations] = useState<any[]>([]);
   const [recLoading, setRecLoading] = useState(false);
   const [topicStats, setTopicStats] = useState<Record<string, {total: number, correct: number, percent: number}>>({});
@@ -150,9 +150,9 @@ export const MarksheetCard: React.FC<Props> = ({ result, user, settings, onClose
       }
   }, [activeTab, questions]);
 
-  const handleRecommend = async (openModal: boolean = true) => {
+  const handleRecommend = async (openModal: boolean = false) => {
       setRecLoading(true);
-      if(openModal) setShowRecModal(true);
+      // if(openModal) setShowRecModal(true); // REMOVED as per user request
 
       // Identify weak topics (Percent < 70)
       const weakTopics = Object.keys(topicStats).filter(t => topicStats[t].percent < 70);
@@ -602,7 +602,8 @@ export const MarksheetCard: React.FC<Props> = ({ result, user, settings, onClose
                                                       <div className="flex-1 min-w-0">
                                                           <div className="flex items-center gap-1">
                                                               <p className="font-bold text-slate-700 text-xs line-clamp-1">{rec.title}</p>
-                                                              <SpeakButton text={rec.title} className="p-1 shrink-0" iconSize={12} />
+                                                              {/* Updated: Read Content if available */}
+                                                              <SpeakButton text={`${rec.title}. ${stripHtml(rec.content || rec.html || '')}`} className="p-1 shrink-0" iconSize={12} />
                                                           </div>
                                                           <span className={`text-[9px] font-bold px-1.5 py-0.5 rounded ${rec.isPremium ? 'bg-purple-100 text-purple-700' : 'bg-orange-100 text-orange-700'}`}>
                                                               {rec.isPremium ? 'PREMIUM PDF' : 'FREE NOTE'}
@@ -658,7 +659,50 @@ export const MarksheetCard: React.FC<Props> = ({ result, user, settings, onClose
       );
   };
 
+  const renderTopicBreakdown = () => {
+      const topics = Object.keys(topicStats);
+      if (topics.length === 0) return null;
+
+      return (
+          <div className="bg-white rounded-2xl p-6 shadow-sm border border-slate-200 mb-6">
+              <h3 className="font-black text-slate-800 text-lg mb-4 flex items-center gap-2">
+                  <BarChart3 size={18} /> Topic Breakdown
+              </h3>
+              <div className="space-y-4">
+                  {topics.map((topic, i) => {
+                      const stats = topicStats[topic];
+                      const percent = stats.percent;
+
+                      // Color Logic matching the screenshot
+                      let colorClass = "bg-red-500";
+                      if (percent >= 80) colorClass = "bg-green-500";
+                      else if (percent >= 40) colorClass = "bg-yellow-500";
+
+                      return (
+                          <div key={i}>
+                              <div className="flex justify-between items-end mb-1">
+                                  <span className="font-bold text-slate-700 text-xs uppercase">{topic}</span>
+                                  <span className={`text-xs font-black ${percent >= 80 ? 'text-green-600' : percent >= 40 ? 'text-yellow-600' : 'text-red-600'}`}>
+                                      {stats.correct}/{stats.total} ({percent}%)
+                                  </span>
+                              </div>
+                              <div className="h-2 w-full bg-slate-100 rounded-full overflow-hidden">
+                                  <div
+                                      className={`h-full ${colorClass} transition-all duration-1000 ease-out`}
+                                      style={{ width: `${percent}%` }}
+                                  ></div>
+                              </div>
+                          </div>
+                      );
+                  })}
+              </div>
+          </div>
+      );
+  };
+
   const renderOMRSection = () => (
+        <>
+        {renderTopicBreakdown()}
         <div className="bg-white rounded-2xl p-6 shadow-sm border border-slate-200">
             <h3 className="font-black text-slate-800 text-lg mb-4 flex items-center gap-2">
                 <Grid size={18} /> OMR Response Sheet
@@ -674,6 +718,7 @@ export const MarksheetCard: React.FC<Props> = ({ result, user, settings, onClose
                 </div>
             )}
         </div>
+        </>
   );
 
   const renderSolutionSection = () => (
@@ -1109,6 +1154,7 @@ export const MarksheetCard: React.FC<Props> = ({ result, user, settings, onClose
                                                                     <div className="flex items-center gap-2 mb-2">
                                                                         <span className="text-[10px] font-bold text-orange-700 bg-orange-100 px-2 py-0.5 rounded uppercase">Note</span>
                                                                         <h5 className="text-xs font-bold text-slate-800">{note.title}</h5>
+                                                                        <SpeakButton text={`${note.title}. ${stripHtml(content)}`} className="p-1" iconSize={14} />
                                                                     </div>
                                                                     <div
                                                                         className="prose prose-sm max-w-none text-[11px] text-slate-700 leading-relaxed"
@@ -1233,7 +1279,10 @@ export const MarksheetCard: React.FC<Props> = ({ result, user, settings, onClose
                 </header>
                 <div className="flex-1 overflow-y-auto p-6 bg-slate-50">
                     <div className="max-w-3xl mx-auto bg-white p-6 rounded-3xl shadow-sm border border-slate-100 min-h-[50vh]">
-                        <h1 className="text-2xl font-black text-slate-900 mb-6 border-b pb-4">{viewingNote.title}</h1>
+                        <div className="flex items-center justify-between mb-6 border-b pb-4">
+                             <h1 className="text-2xl font-black text-slate-900">{viewingNote.title}</h1>
+                             <SpeakButton text={`${viewingNote.title}. ${stripHtml(viewingNote.content || '')}`} className="p-2 bg-slate-100 rounded-full hover:bg-slate-200" iconSize={20} />
+                        </div>
                         <div className="prose prose-slate max-w-none prose-headings:font-black" dangerouslySetInnerHTML={{ __html: (viewingNote.content) }} />
                     </div>
                 </div>
@@ -1520,100 +1569,7 @@ export const MarksheetCard: React.FC<Props> = ({ result, user, settings, onClose
              </div>
         </div>
 
-        {/* RECOMMENDATION MODAL (Fallback/Hidden usually) */}
-        {showRecModal && (
-            <div className="fixed inset-0 z-[250] bg-black/50 backdrop-blur-sm flex items-center justify-center p-4 animate-in fade-in">
-                <div className="bg-white rounded-3xl w-full max-w-md max-h-[80vh] flex flex-col shadow-2xl">
-                    <div className="p-4 border-b flex justify-between items-center">
-                        <h3 className="font-black text-slate-800 flex items-center gap-2">
-                            <Lightbulb size={20} className="text-yellow-500" /> Recommended for You
-                        </h3>
-                        <button onClick={() => setShowRecModal(false)} className="p-2 bg-slate-100 rounded-full"><X size={16} /></button>
-                    </div>
-                    <div className="flex-1 overflow-y-auto p-4 space-y-6">
-                        {recLoading ? (
-                            <div className="text-center py-8 text-slate-400 font-bold animate-pulse">Finding best notes...</div>
-                        ) : recommendations.length === 0 ? (
-                            <div className="text-center py-8 text-slate-400">No specific notes found for your weak topics. Try reviewing the chapter again!</div>
-                        ) : (
-                            <>
-                                {/* FREE RECOMMENDATIONS */}
-                                {recommendations.filter(r => !r.isPremium).length > 0 && (
-                                    <div className="space-y-3">
-                                        <h4 className="text-xs font-black text-slate-400 uppercase tracking-widest border-b pb-2">Free Material</h4>
-                                        {recommendations.filter(r => !r.isPremium).map((rec, i) => (
-                                            <div key={`free-${i}`} className="bg-slate-50 p-4 rounded-xl border border-slate-200 flex justify-between items-center">
-                                                <div>
-                                                    <p className="font-bold text-slate-800 text-sm">{rec.title}</p>
-                                                    <p className="text-[10px] text-slate-500 uppercase font-bold mt-1 bg-white px-2 py-0.5 rounded w-fit border">{rec.topic}</p>
-                                                </div>
-                                                <button
-                                                    className="text-xs font-bold text-blue-600 bg-blue-100 px-3 py-1.5 rounded-lg hover:bg-blue-200"
-                                                    onClick={() => {
-                                                        if (rec.type === 'FREE_NOTES_LINK') {
-                                                            if (onLaunchContent) {
-                                                                onLaunchContent({
-                                                                    id: result.chapterId,
-                                                                    title: result.chapterTitle,
-                                                                    type: 'PDF',
-                                                                    subjectName: result.subjectName,
-                                                                });
-                                                            } else {
-                                                                alert("Please go to the Chapter page and open Free Notes.");
-                                                            }
-                                                        } else if (onLaunchContent) {
-                                                            onLaunchContent({
-                                                                id: `REC_FREE_${i}`,
-                                                                title: rec.title,
-                                                                type: 'PDF',
-                                                                directResource: { url: rec.url, access: rec.access }
-                                                            });
-                                                        }
-                                                    }}
-                                                >
-                                                    Read
-                                                </button>
-                                            </div>
-                                        ))}
-                                    </div>
-                                )}
-
-                                {/* PREMIUM RECOMMENDATIONS */}
-                                {recommendations.filter(r => r.isPremium).length > 0 && (
-                                    <div className="space-y-3">
-                                        <h4 className="text-xs font-black text-yellow-600 uppercase tracking-widest border-b pb-2">Premium Resources</h4>
-                                        {recommendations.filter(r => r.isPremium).map((rec, i) => (
-                                            <div key={`prem-${i}`} className="bg-yellow-50 p-4 rounded-xl border border-yellow-200 flex justify-between items-center">
-                                                <div>
-                                                    <p className="font-bold text-slate-800 text-sm">{rec.title}</p>
-                                                    <p className="text-[10px] text-slate-500 uppercase font-bold mt-1 bg-white px-2 py-0.5 rounded w-fit border">{rec.topic}</p>
-                                                    <span className="text-[9px] text-yellow-600 bg-yellow-100 px-2 py-0.5 rounded ml-1 font-bold">PREMIUM</span>
-                                                </div>
-                                                <button
-                                                    className="text-xs font-bold text-yellow-700 bg-yellow-200 px-3 py-1.5 rounded-lg hover:bg-yellow-300 shadow-sm"
-                                                    onClick={() => {
-                                                        if (onLaunchContent) {
-                                                            onLaunchContent({
-                                                                id: `REC_PREM_${i}`,
-                                                                title: rec.title,
-                                                                type: 'PDF',
-                                                                directResource: { url: rec.url, access: rec.access }
-                                                            });
-                                                        }
-                                                    }}
-                                                >
-                                                    Unlock
-                                                </button>
-                                            </div>
-                                        ))}
-                                    </div>
-                                )}
-                            </>
-                        )}
-                    </div>
-                </div>
-            </div>
-        )}
+        {/* RECOMMENDATION MODAL REMOVED AS PER USER REQUEST */}
 
         {/* HIDDEN PRINT CONTAINER FOR DOWNLOAD ALL */}
         {isDownloadingAll && (

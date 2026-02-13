@@ -5,7 +5,7 @@ import { LayoutDashboard, Users, Search, Trash2, Save, X, Eye, EyeOff, Shield, M
 import { getSubjectsList, DEFAULT_SUBJECTS, DEFAULT_APP_FEATURES, ALL_APP_FEATURES, STUDENT_APP_FEATURES, DEFAULT_CONTENT_INFO_CONFIG, ADMIN_PERMISSIONS, APP_VERSION } from '../constants';
 import { fetchChapters, fetchLessonContent } from '../services/groq';
 import { runAutoPilot, runCommandMode } from '../services/autoPilot';
-import { saveChapterData, bulkSaveLinks, checkFirebaseConnection, saveSystemSettings, subscribeToUsers, rtdb, saveUserToLive, db, getChapterData, saveCustomSyllabus, deleteCustomSyllabus, subscribeToUniversalAnalysis, saveAiInteraction, saveSecureKeys, getSecureKeys, subscribeToApiUsage, subscribeToDrafts, resetAllContent } from '../firebase'; // IMPORT FIREBASE
+import { saveChapterData, bulkSaveLinks, checkFirebaseConnection, saveSystemSettings, subscribeToUsers, rtdb, saveUserToLive, db, getChapterData, saveCustomSyllabus, deleteCustomSyllabus, subscribeToUniversalAnalysis, saveAiInteraction, saveSecureKeys, getSecureKeys, subscribeToApiUsage, subscribeToDrafts, resetAllContent, subscribeToDemands } from '../firebase'; // IMPORT FIREBASE
 import { ref, set, onValue, update, push, get } from "firebase/database";
 import { doc, deleteDoc } from "firebase/firestore";
 import { storage } from '../utils/storage';
@@ -26,6 +26,19 @@ import QRCode from "react-qr-code";
 pdfjs.GlobalWorkerOptions.workerSrc = `//unpkg.com/pdfjs-dist@${pdfjs.version}/build/pdf.worker.min.mjs`;
 
 const QUESTION_START_REGEX = /^(\*\*)?(Q\s*\d+[.:)]?|\d+[.:)]|Question\s*\d+[.:)]?)(\*\*)?\s*/i;
+
+const looksLikeQuestionBlock = (lines: string[], index: number): boolean => {
+    // Check if line index + 5 (Answer line) exists
+    if (index + 5 >= lines.length) return false;
+
+    // Check Answer pattern on line index + 5
+    const ansLine = lines[index + 5];
+    // Remove Markdown Bolding (**Answer**) if present
+    const cleanAnsLine = ansLine.replace(/^\*\*|\*\*$/g, '');
+
+    // Check if it starts with Answer/Ans/Correct/उत्तर
+    return /^(Answer|Ans|Correct|उत्तर)\s*[:\s-]*\s*/i.test(cleanAnsLine);
+};
 
 interface Props {
   onNavigate: (view: ViewState) => void;
@@ -985,10 +998,16 @@ const AdminDashboardInner: React.FC<Props> = ({ onNavigate, settings, onUpdateSe
           }
       });
 
+      // SUBSCRIBE TO DEMANDS (Live Sync)
+      const unsubDemands = subscribeToDemands((liveDemands) => {
+          setDemands(liveDemands);
+      });
+
       return () => {
           clearInterval(interval);
           unsubUsers();
           unsubReqs();
+          if (unsubDemands) unsubDemands();
       };
   }, []);
 
@@ -1018,9 +1037,6 @@ const AdminDashboardInner: React.FC<Props> = ({ onNavigate, settings, onUpdateSe
       const storedUsersStr = localStorage.getItem('nst_users');
       if (storedUsersStr) setUsers(JSON.parse(storedUsersStr));
       
-      const demandStr = localStorage.getItem('nst_demand_requests');
-      if (demandStr) setDemands(JSON.parse(demandStr));
-
       // const reqStr = localStorage.getItem('nst_recovery_requests');
       // if (reqStr) setRecoveryRequests(JSON.parse(reqStr));
 
@@ -1825,7 +1841,7 @@ const AdminDashboardInner: React.FC<Props> = ({ onNavigate, settings, onUpdateSe
                       const line = lines[i];
                       
                       // Check for Question Start
-                      const isQuestionStart = QUESTION_START_REGEX.test(line);
+                      const isQuestionStart = QUESTION_START_REGEX.test(line) || looksLikeQuestionBlock(lines, i);
 
                       if (isQuestionStart) {
                           if (i + 5 >= lines.length) break;
@@ -1852,7 +1868,7 @@ const AdminDashboardInner: React.FC<Props> = ({ onNavigate, settings, onUpdateSe
 
                           while (nextIndex < lines.length) {
                               const line = lines[nextIndex];
-                              const isNewQuestion = QUESTION_START_REGEX.test(line);
+                              const isNewQuestion = QUESTION_START_REGEX.test(line) || looksLikeQuestionBlock(lines, nextIndex);
                               if (isNewQuestion) break;
                               expLines.push(line);
                               nextIndex++;
@@ -1998,7 +2014,7 @@ const AdminDashboardInner: React.FC<Props> = ({ onNavigate, settings, onUpdateSe
                           }
 
                           // 2. CHECK FOR QUESTION START
-                          const isQuestionStart = QUESTION_START_REGEX.test(line);
+                          const isQuestionStart = QUESTION_START_REGEX.test(line) || looksLikeQuestionBlock(lines, i);
 
                           if (isQuestionStart) {
                               // Needs at least Q + 4 Options + Ans = 6 lines remaining
@@ -2035,7 +2051,7 @@ const AdminDashboardInner: React.FC<Props> = ({ onNavigate, settings, onUpdateSe
                               while (nextIndex < lines.length) {
                                   const nextLine = lines[nextIndex];
                                   const isNextTopic = /^<TOPIC:\s*(.*?)>/i.test(nextLine);
-                                  const isNextQ = QUESTION_START_REGEX.test(nextLine);
+                                  const isNextQ = QUESTION_START_REGEX.test(nextLine) || looksLikeQuestionBlock(lines, nextIndex);
 
                                   if (isNextQ || isNextTopic) break;
 
@@ -2418,7 +2434,7 @@ const AdminDashboardInner: React.FC<Props> = ({ onNavigate, settings, onUpdateSe
                   {(hasPermission('MANAGE_PLANS') || currentUser?.role === 'ADMIN') && <DashboardCard icon={Crown} label="Plans Manager" onClick={() => setActiveTab('SUBSCRIPTION_PLANS_EDITOR')} color="blue" />}
                   {(hasPermission('MANAGE_GIFT_CODES') || currentUser?.role === 'ADMIN') && <DashboardCard icon={Gift} label="Gift Codes" onClick={() => setActiveTab('CODES')} color="pink" />}
                   {(hasPermission('MANAGE_SYLLABUS') || currentUser?.role === 'ADMIN') && <DashboardCard icon={Book} label="Subjects" onClick={() => setActiveTab('SUBJECTS_MGR')} color="emerald" />}
-                  {/* {(hasPermission('VIEW_DEMANDS') || currentUser?.role === 'ADMIN') && <DashboardCard icon={Megaphone} label="Demands" onClick={() => setActiveTab('DEMAND')} color="orange" count={demands.length} />} */}
+                  {(hasPermission('VIEW_DEMANDS') || currentUser?.role === 'ADMIN') && <DashboardCard icon={Megaphone} label="Demands" onClick={() => setActiveTab('DEMAND')} color="orange" count={demands.length} />}
                   {(hasPermission('APPROVE_LOGIN_REQS') || currentUser?.role === 'ADMIN') && <DashboardCard icon={Key} label="Login Reqs" onClick={() => setActiveTab('ACCESS')} color="purple" count={recoveryRequests.filter(r => r.status === 'PENDING').length} />}
                   
                   <div className="col-span-2 sm:col-span-3 md:col-span-4 lg:col-span-6 h-px bg-slate-100 my-2"></div>
@@ -3972,7 +3988,7 @@ const AdminDashboardInner: React.FC<Props> = ({ onNavigate, settings, onUpdateSe
                                   <strong>Supported Formats:</strong><br/>
                                   1. Copy from Excel (7 Columns): Q | Opt A | Opt B | Opt C | Opt D | Ans(1-4) | Exp<br/>
                                   2. Vertical List: Q \n 4 Options \n Answer \n Explanation (Multi-line). <br/>
-                                  *Note: For multi-line explanation, ensure next Question starts with "1.", "2." etc.
+                                  *Note: Numbered (Q1.) or Unnumbered questions supported (if 4 options + Answer line provided).
                               </div>
 
                               <textarea 
@@ -8489,7 +8505,7 @@ Capital of India?       Mumbai  Delhi   Kolkata Chennai 2       Delhi is the cap
               </div>
 
               {/* CREDIT PACKAGES */}
-              <div>
+              <div className="mb-8">
                   <h4 className="font-bold text-lg mb-4 text-slate-800">Credit Packages</h4>
                   <div className="grid grid-cols-2 md:grid-cols-5 gap-4">
                       {localSettings.packages.map((pkg) => (
@@ -8502,6 +8518,53 @@ Capital of India?       Mumbai  Delhi   Kolkata Chennai 2       Delhi is the cap
                               </button>
                           </div>
                       ))}
+                  </div>
+              </div>
+
+              {/* STORE FEATURE LIST EDITOR */}
+              <div className="p-4 bg-slate-50 rounded-xl border border-slate-200">
+                  <h4 className="font-bold text-lg mb-4 text-slate-800 flex items-center gap-2">
+                      <List size={20} /> Store Feature Lists (Basic vs Ultra)
+                  </h4>
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                      {/* BASIC FEATURES */}
+                      <div>
+                          <label className="text-xs font-bold text-blue-600 uppercase mb-2 block">Basic Features List</label>
+                          <textarea
+                              className="w-full h-40 p-3 border rounded-xl text-sm"
+                              value={localSettings.storeFeatures?.basic?.join('\n') || ''}
+                              onChange={(e) => setLocalSettings({
+                                  ...localSettings,
+                                  storeFeatures: {
+                                      ...localSettings.storeFeatures,
+                                      basic: e.target.value.split('\n')
+                                  }
+                              })}
+                              placeholder="One feature per line..."
+                          />
+                      </div>
+
+                      {/* ULTRA FEATURES */}
+                      <div>
+                          <label className="text-xs font-bold text-purple-600 uppercase mb-2 block">Ultra Features List</label>
+                          <textarea
+                              className="w-full h-40 p-3 border rounded-xl text-sm"
+                              value={localSettings.storeFeatures?.ultra?.join('\n') || ''}
+                              onChange={(e) => setLocalSettings({
+                                  ...localSettings,
+                                  storeFeatures: {
+                                      ...localSettings.storeFeatures,
+                                      ultra: e.target.value.split('\n')
+                                  }
+                              })}
+                              placeholder="One feature per line..."
+                          />
+                      </div>
+                  </div>
+                  <div className="mt-4 text-right">
+                      <button onClick={handleSaveSettings} className="bg-green-600 text-white px-6 py-2 rounded-xl font-bold shadow hover:bg-green-700">
+                          Save Feature Lists
+                      </button>
                   </div>
               </div>
           </div>
