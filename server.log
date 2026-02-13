@@ -2,30 +2,10 @@
 > students@0.0.0 dev
 > vite
 
+Port 5000 is in use, trying another one...
 
-  VITE v6.4.1  ready in 218 ms
+  VITE v6.4.1  ready in 830 ms
 
-  ➜  Local:   http://localhost:5000/
-  ➜  Network: http://192.168.0.2:5000/
+  ➜  Local:   http://localhost:5001/
+  ➜  Network: http://192.168.0.2:5001/
 [BABEL] Note: The code generator has deoptimised the styling of /app/components/AdminDashboard.tsx as it exceeds the max of 500KB.
-4:22:26 AM [vite] (client) hmr update /components/LessonView.tsx
-4:25:47 AM [vite] (client) hmr update /components/PdfView.tsx
-5:15:51 AM [vite] (client) hmr update /components/AdminDashboard.tsx
-5:16:40 AM [vite] (client) hmr update /components/PdfView.tsx
-5:59:52 AM [vite] (client) hmr update /components/AdminDashboard.tsx
-6:00:04 AM [vite] (client) hmr update /components/ChapterSelection.tsx
-6:01:24 AM [vite] (client) hmr update /components/McqView.tsx
-6:01:44 AM [vite] (client) hmr update /components/PdfView.tsx
-6:27:41 AM [vite] (client) hmr update /components/AdminDashboard.tsx
-8:42:13 AM [vite] (client) hmr update /components/PdfView.tsx
-8:42:18 AM [vite] (client) hmr update /components/PdfView.tsx
-8:53:24 AM [vite] (client) hmr update /components/LessonView.tsx, /components/PdfView.tsx
-9:35:48 AM [vite] (client) hmr update /components/AdminDashboard.tsx
-9:36:12 AM [vite] (client) hmr update /components/AdminDashboard.tsx
-9:37:43 AM [vite] (client) hmr update /components/AdminDashboard.tsx
-10:13:56 AM [vite] (client) hmr update /components/PdfView.tsx
-10:14:06 AM [vite] (client) hmr update /components/CustomPlayer.tsx
-10:14:13 AM [vite] (client) hmr update /components/AdminDashboard.tsx
-10:15:53 AM [vite] (client) hmr update /components/AdminDashboard.tsx
-10:16:07 AM [vite] (client) hmr update /App.tsx, /components/SubjectSelection.tsx, /components/StudentDashboard.tsx, /components/AdminDashboard.tsx, /components/StudentAiAssistant.tsx, /components/admin/ChallengeCreator20.tsx, /components/PdfView.tsx
-10:16:17 AM [vite] (client) hmr update /components/VideoPlaylistView.tsx

@@ -534,7 +534,11 @@ export const PdfView: React.FC<Props> = ({
                                    }
                                }
 
-                               return contentToRender.trim().startsWith('<') || (contentToRender.includes('</div>') && !contentToRender.includes('```')) ? (
+                               // Enhanced HTML Detection: Check for specific HTML tags even if content doesn't start with '<'
+                               const hasHtmlTags = /<(h[1-6]|p|div|ul|ol|li|table|tr|td|th|br|img|span|b|i|strong|em|small|big|mark|blockquote|pre|code|center|font|u|s|sub|sup|dl|dt|dd|figure|figcaption|article|section|header|footer|nav|aside|main)\b/i.test(contentToRender);
+                               const isHtml = contentToRender.trim().startsWith('<') || (hasHtmlTags && !contentToRender.includes('```'));
+
+                               return isHtml ? (
                                    <div 
                                        className="max-w-3xl mx-auto"
                                        dangerouslySetInnerHTML={{ __html: contentToRender }} 
