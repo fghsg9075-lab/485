@@ -25,7 +25,7 @@ import QRCode from "react-qr-code";
 // Configure PDF Worker (CDN for stability)
 pdfjs.GlobalWorkerOptions.workerSrc = `//unpkg.com/pdfjs-dist@${pdfjs.version}/build/pdf.worker.min.mjs`;
 
-const QUESTION_START_REGEX = /^(Q\s*\d+[.:)]?|\d+[.:)]|Question\s*\d+[.:)]?)\s*/i;
+const QUESTION_START_REGEX = /^(\*\*)?(Q\s*\d+[.:)]?|\d+[.:)]|Question\s*\d+[.:)]?)(\*\*)?\s*/i;
 
 interface Props {
   onNavigate: (view: ViewState) => void;
@@ -1821,49 +1821,68 @@ const AdminDashboardInner: React.FC<Props> = ({ onNavigate, settings, onUpdateSe
                   const lines = rawText.split('\n').map(l => l.trim()).filter(l => l);
                   let i = 0;
                   
-                  while (i + 5 < lines.length) {
-                      const q = lines[i];
-                      const opts = [lines[i+1], lines[i+2], lines[i+3], lines[i+4]];
+                  while (i < lines.length) {
+                      const line = lines[i];
                       
-                      let ansRaw = lines[i+5].replace(/^(Answer|Ans|Correct)[:\s-]*/i, '').trim();
-                      let ansIdx = parseInt(ansRaw) - 1;
-                      if (isNaN(ansIdx)) {
-                          const firstChar = ansRaw.charAt(0).toUpperCase();
-                          const map: any = { 'A': 0, 'B': 1, 'C': 2, 'D': 3 };
-                          if (map[firstChar] !== undefined) ansIdx = map[firstChar];
-                      }
+                      // Check for Question Start
+                      const isQuestionStart = QUESTION_START_REGEX.test(line);
 
-                      let expLines = [];
-                      let nextIndex = i + 6;
-                      
-                      while (nextIndex < lines.length) {
-                          const line = lines[nextIndex];
-                          const isNewQuestion = QUESTION_START_REGEX.test(line);
-                          if (isNewQuestion) break; 
-                          expLines.push(line);
-                          nextIndex++;
-                      }
+                      if (isQuestionStart) {
+                          if (i + 5 >= lines.length) break;
 
-                      // Parse Topic from Explanation or separate line
-                      let explanation = expLines.join('\n');
-                      let topic = '';
-                      // Updated Regex to handle Topic on new line more robustly
-                      const topicMatch = explanation.match(/Topic:\s*(.*)/i);
-                      if (topicMatch) {
-                          topic = topicMatch[1].trim();
-                          // Remove the Topic line from explanation to keep it clean
-                          explanation = explanation.replace(/Topic:\s*.*$/im, '').trim();
-                      }
+                          // Clean Question Text (Remove Markdown ** if present)
+                          const q = line.replace(/^\*\*|\*\*$/g, '');
 
-                      newQuestions.push({
-                          question: q,
-                          options: opts,
-                          correctAnswer: (ansIdx >= 0 && ansIdx <= 3) ? ansIdx : 0,
-                          explanation: explanation,
-                          topic: topic
-                      });
-                      
-                      i = nextIndex;
+                          const opts = [lines[i+1], lines[i+2], lines[i+3], lines[i+4]];
+
+                          let ansLine = lines[i+5];
+                          ansLine = ansLine.replace(/^\*\*|\*\*$/g, '');
+                          let ansRaw = ansLine.replace(/^(Answer|Ans|Correct|उत्तर)\s*[:\s-]*\s*/i, '').trim();
+
+                          let ansIdx = parseInt(ansRaw) - 1;
+                          if (isNaN(ansIdx)) {
+                              const firstChar = ansRaw.charAt(0).toUpperCase();
+                              const map: any = { 'A': 0, 'B': 1, 'C': 2, 'D': 3 };
+                              if (map[firstChar] !== undefined) ansIdx = map[firstChar];
+                          }
+                          if (ansIdx < 0 || ansIdx > 3) ansIdx = 0;
+
+                          let expLines = [];
+                          let nextIndex = i + 6;
+
+                          while (nextIndex < lines.length) {
+                              const line = lines[nextIndex];
+                              const isNewQuestion = QUESTION_START_REGEX.test(line);
+                              if (isNewQuestion) break;
+                              expLines.push(line);
+                              nextIndex++;
+                          }
+
+                          let explanation = expLines.join('\n').trim();
+                          // Improved Explanation Parsing
+                          explanation = explanation.replace(/^\*\*/, '');
+                          explanation = explanation.replace(/^(Explanation|Exp|व्याख्या)\s*[:\s-]*(\*\*)?\s*/i, '');
+                          explanation = explanation.replace(/^\*\*/, '').trim();
+
+                          let topic = '';
+                          const topicMatch = explanation.match(/Topic:\s*(.*)/i);
+                          if (topicMatch) {
+                              topic = topicMatch[1].trim();
+                              explanation = explanation.replace(/Topic:\s*.*$/im, '').trim();
+                          }
+
+                          newQuestions.push({
+                              question: q,
+                              options: opts,
+                              correctAnswer: ansIdx,
+                              explanation: explanation,
+                              topic: topic
+                          });
+
+                          i = nextIndex;
+                      } else {
+                          i++;
+                      }
                   }
               }
 
@@ -1979,21 +1998,22 @@ const AdminDashboardInner: React.FC<Props> = ({ onNavigate, settings, onUpdateSe
                           }
 
                           // 2. CHECK FOR QUESTION START
-                          // Matches: "Q1.", "1.", "Q1", "(1)", "Question 1:" etc.
-                          // OR simply starts with typical question words if numbered list fails,
-                          // but strict numbering is safer for bulk.
-                          // Let's assume standard format: Q1. or 1.
                           const isQuestionStart = QUESTION_START_REGEX.test(line);
 
                           if (isQuestionStart) {
-                              // We found a question start. Now try to extract the block.
                               // Needs at least Q + 4 Options + Ans = 6 lines remaining
                               if (i + 5 >= lines.length) break;
 
-                              const q = line;
+                              // Clean Question Text (Remove Markdown ** if present)
+                              const q = line.replace(/^\*\*|\*\*$/g, '');
+
                               const opts = [lines[i+1], lines[i+2], lines[i+3], lines[i+4]];
 
-                              let ansRaw = lines[i+5].replace(/^(Answer|Ans|Correct)\s*[:\s-]*\s*/i, '').trim();
+                              let ansLine = lines[i+5];
+                              // Remove ** wrapper
+                              ansLine = ansLine.replace(/^\*\*|\*\*$/g, '');
+                              // Remove Label
+                              let ansRaw = ansLine.replace(/^(Answer|Ans|Correct|उत्तर)\s*[:\s-]*\s*/i, '').trim();
 
                               // Flexible Answer Parsing
                               let ansIdx = -1;
@@ -2005,7 +2025,7 @@ const AdminDashboardInner: React.FC<Props> = ({ onNavigate, settings, onUpdateSe
                                   const map: any = { 'A': 0, 'B': 1, 'C': 2, 'D': 3 };
                                   if (map[firstChar] !== undefined) ansIdx = map[firstChar];
                               }
-                              // Default to 0 (A) if parsing fails, but warn?
+                              // Default to 0 (A) if parsing fails
                               if (ansIdx < 0 || ansIdx > 3) ansIdx = 0;
 
                               // Parse Explanation (Optional lines until next Q/Topic)
@@ -2015,19 +2035,22 @@ const AdminDashboardInner: React.FC<Props> = ({ onNavigate, settings, onUpdateSe
                               while (nextIndex < lines.length) {
                                   const nextLine = lines[nextIndex];
                                   const isNextTopic = /^<TOPIC:\s*(.*?)>/i.test(nextLine);
-                                  // Check if line is a new question start (e.g. "Q1." or "1.")
                                   const isNextQ = QUESTION_START_REGEX.test(nextLine);
 
-                                  // Stop if next line looks like a new item
                                   if (isNextQ || isNextTopic) break;
 
                                   expLines.push(nextLine);
                                   nextIndex++;
                               }
 
-                              let explanation = expLines.join('\n');
-                              // Remove "Explanation:" prefix if it exists in the joined text (or first line)
-                              explanation = explanation.replace(/^(Explanation|Exp)\s*[:\s-]*\s*/i, '');
+                              let explanation = expLines.join('\n').trim();
+                              // Improved Explanation Parsing
+                              // 1. Remove leading **
+                              explanation = explanation.replace(/^\*\*/, '');
+                              // 2. Remove Label
+                              explanation = explanation.replace(/^(Explanation|Exp|व्याख्या)\s*[:\s-]*(\*\*)?\s*/i, '');
+                              // 3. Remove leading ** again if left
+                              explanation = explanation.replace(/^\*\*/, '').trim();
 
                               // Parse Inline Topic (if any) overrides global
                               let topic = '';
@@ -2047,7 +2070,6 @@ const AdminDashboardInner: React.FC<Props> = ({ onNavigate, settings, onUpdateSe
 
                               i = nextIndex;
                           } else {
-                              // If line doesn't look like Q start or Topic, skip it (maybe garbage or header)
                               i++;
                           }
                       }
