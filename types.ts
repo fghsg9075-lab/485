@@ -326,7 +326,6 @@ export interface SystemSettings {
   };
   playerBrandingText?: string; // NEW: Custom Video Player Overlay Text
   playerBlockShare?: boolean; // NEW: Block Share
-  watermarkConfig?: WatermarkConfig; // NEW: Global Watermark Config
   appLogo?: string; // NEW: Base64 Logo Image
   syllabusType?: 'SCHOOL' | 'COMPETITIVE' | 'DUAL'; // Updated: DUAL support
   footerText?: string; // NEW: Customized footer text
@@ -685,18 +684,6 @@ export interface Chapter {
   id: string;
   title: string;
   description?: string;
-}
-
-export interface WatermarkConfig {
-  text: string;
-  opacity: number; // 0 to 1
-  color: string;
-  backgroundColor: string;
-  fontSize: number;
-  isRepeating: boolean;
-  positionX: number; // %
-  positionY: number; // %
-  rotation: number; // deg
 }
 
 export interface MCQItem {

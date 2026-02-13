@@ -266,7 +266,7 @@ export const ADMIN_PERMISSIONS = [
     'MANAGE_NOTICES', 'SEND_NOTIFICATIONS', 'MANAGE_CHAT', 'BAN_USERS',
     'VIEW_LOGS', 'VIEW_DATABASE', 'MANAGE_GIFT_CODES', 'MANAGE_SUB_ADMINS',
     'MANAGE_REWARDS', 'MANAGE_STORE', 'MANAGE_PACKAGES', 'MANAGE_PLANS',
-    'MANAGE_WATERMARK', 'MANAGE_ADS', 'MANAGE_EXTERNAL_APPS', 'MANAGE_SYLLABUS',
+    'MANAGE_ADS', 'MANAGE_EXTERNAL_APPS', 'MANAGE_SYLLABUS',
     'VIEW_DEMANDS', 'APPROVE_LOGIN_REQS', 'DEPLOY_APP', 'RESET_SYSTEM'
 ];
 
@@ -295,7 +295,6 @@ export const ALL_APP_FEATURES = [
     { id: 'f21', title: 'Performance History', enabled: true },
     { id: 'f22', title: 'Dark/Light Mode', enabled: true },
     { id: 'f23', title: 'Responsive Design', enabled: true },
-    { id: 'f24', title: 'PDF Watermarking', enabled: true },
     { id: 'f25', title: 'Auto-Sync', enabled: true },
     { id: 'f26', title: 'Offline Capabilities', enabled: true },
     { id: 'f27', title: 'Guest Access', enabled: true },

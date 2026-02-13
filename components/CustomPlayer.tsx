@@ -8,8 +8,6 @@ interface CustomPlayerProps {
     brandingLogoConfig?: any;
     onEnded?: () => void;
     blockShare?: boolean;
-    watermarkText?: string;
-    watermarkConfig?: any;
 }
 
 export const CustomPlayer: React.FC<CustomPlayerProps> = ({ 
@@ -19,8 +17,6 @@ export const CustomPlayer: React.FC<CustomPlayerProps> = ({
     brandingLogoConfig, 
     onEnded, 
     blockShare = true,
-    watermarkText = 'IDEAL INSPIRATION CLASSES',
-    watermarkConfig
 }) => {
     // Extract Video ID
     let videoId = '';
@@ -115,65 +111,6 @@ export const CustomPlayer: React.FC<CustomPlayerProps> = ({
                  </div>
              )}
 
-             {/* Watermark Overlay */}
-             {watermarkConfig && (
-                 <div 
-                    className="absolute pointer-events-none z-40 select-none flex items-center justify-center overflow-hidden"
-                    style={{
-                        left: watermarkConfig.isRepeating ? 0 : `${watermarkConfig.positionX}%`,
-                        top: watermarkConfig.isRepeating ? 0 : `${watermarkConfig.positionY}%`,
-                        right: watermarkConfig.isRepeating ? 0 : 'auto',
-                        bottom: watermarkConfig.isRepeating ? 0 : 'auto',
-                        opacity: watermarkConfig.opacity || 0.2,
-                        transform: !watermarkConfig.isRepeating ? `translate(-50%, -50%) rotate(${watermarkConfig.rotation || 0}deg)` : 'none'
-                    }}
-                 >
-                    {watermarkConfig.isRepeating ? (
-                        <div className="flex flex-col gap-8 md:gap-16 items-center justify-center w-full h-full" style={{ transform: `rotate(${watermarkConfig.rotation || -12}deg)` }}>
-                            {[1, 2, 3, 4, 5].map(i => (
-                                <div key={i} className="flex gap-8 md:gap-16">
-                                    {[1, 2, 3].map(j => (
-                                        <span 
-                                            key={`${i}-${j}`} 
-                                            className="font-black uppercase tracking-[0.2em] whitespace-nowrap"
-                                            style={{ 
-                                                fontSize: `${watermarkConfig.fontSize || 24}px`,
-                                                color: watermarkConfig.color || '#ffffff',
-                                                backgroundColor: watermarkConfig.backgroundColor || 'transparent'
-                                            }}
-                                        >
-                                            {watermarkConfig.text || watermarkText}
-                                        </span>
-                                    ))}
-                                </div>
-                            ))}
-                        </div>
-                    ) : (
-                        <span 
-                            className="font-black uppercase tracking-[0.2em] whitespace-nowrap"
-                            style={{ 
-                                fontSize: `${watermarkConfig.fontSize || 24}px`,
-                                color: watermarkConfig.color || '#ffffff',
-                                backgroundColor: watermarkConfig.backgroundColor || 'transparent'
-                            }}
-                        >
-                            {watermarkConfig.text || watermarkText}
-                        </span>
-                    )}
-                 </div>
-             )}
-             
-             {!watermarkConfig && (
-                 <div className="absolute inset-0 pointer-events-none z-40 overflow-hidden flex items-center justify-center select-none opacity-20">
-                     <div className="flex flex-col gap-8 md:gap-16 items-center justify-center -rotate-12">
-                        {[1, 2, 3].map(i => (
-                            <span key={i} className="text-white font-black text-xl md:text-3xl uppercase tracking-[0.2em] whitespace-nowrap">
-                                {watermarkText}
-                            </span>
-                        ))}
-                     </div>
-                 </div>
-             )}
         </div>
     );
 };
