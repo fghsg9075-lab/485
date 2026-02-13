@@ -309,6 +309,7 @@ export interface LoginBonusConfig {
 
 export interface SystemSettings {
   appName: string; // Long Name
+  mcqUnlockThreshold?: number; // NEW: Customizable unlock threshold
   mcqTestLimitFree?: number;
   mcqTestLimitBasic?: number;
   mcqAnalysisCostBasic?: number;
@@ -798,7 +799,7 @@ export interface PremiumNoteSlot {
   url: string;
   content?: string; // New: HTML content
   color: string; // Hex or Class
-  access: 'BASIC' | 'ULTRA'; 
+  access: 'FREE' | 'BASIC' | 'ULTRA';
 }
 
 export interface LessonContent {

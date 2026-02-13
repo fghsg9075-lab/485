@@ -181,7 +181,7 @@ export const ChapterSelection: React.FC<Props> = ({
                           <span>
                               {isExplicitlyLocked 
                                 ? "This content is currently locked by Admin." 
-                                : "Complete previous chapter MCQs (100) to unlock"}
+                                : `Complete previous chapter MCQs (${settings?.mcqUnlockThreshold || 100}) to unlock`}
                           </span>
                       </div>
                   ) : isCurrent ? (
