@@ -25,7 +25,7 @@ import QRCode from "react-qr-code";
 // Configure PDF Worker (CDN for stability)
 pdfjs.GlobalWorkerOptions.workerSrc = `//unpkg.com/pdfjs-dist@${pdfjs.version}/build/pdf.worker.min.mjs`;
 
-const QUESTION_START_REGEX = /^(Q\s*\d+[.:)]?|\d+[.:)]|Question\s*\d+[.:)]?)\s*/i;
+const QUESTION_START_REGEX = /^(\*\*)?(Q\s*\d+[.:)]?|\d+[.:)]|Question\s*\d+[.:)]?)(\*\*)?\s*/i;
 
 interface Props {
   onNavigate: (view: ViewState) => void;
@@ -1821,49 +1821,68 @@ const AdminDashboardInner: React.FC<Props> = ({ onNavigate, settings, onUpdateSe
                   const lines = rawText.split('\n').map(l => l.trim()).filter(l => l);
                   let i = 0;
                   
-                  while (i + 5 < lines.length) {
-                      const q = lines[i];
-                      const opts = [lines[i+1], lines[i+2], lines[i+3], lines[i+4]];
+                  while (i < lines.length) {
+                      const line = lines[i];
                       
-                      let ansRaw = lines[i+5].replace(/^(Answer|Ans|Correct)[:\s-]*/i, '').trim();
-                      let ansIdx = parseInt(ansRaw) - 1;
-                      if (isNaN(ansIdx)) {
-                          const firstChar = ansRaw.charAt(0).toUpperCase();
-                          const map: any = { 'A': 0, 'B': 1, 'C': 2, 'D': 3 };
-                          if (map[firstChar] !== undefined) ansIdx = map[firstChar];
-                      }
+                      // Check for Question Start
+                      const isQuestionStart = QUESTION_START_REGEX.test(line);
 
-                      let expLines = [];
-                      let nextIndex = i + 6;
-                      
-                      while (nextIndex < lines.length) {
-                          const line = lines[nextIndex];
-                          const isNewQuestion = QUESTION_START_REGEX.test(line);
-                          if (isNewQuestion) break; 
-                          expLines.push(line);
-                          nextIndex++;
-                      }
+                      if (isQuestionStart) {
+                          if (i + 5 >= lines.length) break;
 
-                      // Parse Topic from Explanation or separate line
-                      let explanation = expLines.join('\n');
-                      let topic = '';
-                      // Updated Regex to handle Topic on new line more robustly
-                      const topicMatch = explanation.match(/Topic:\s*(.*)/i);
-                      if (topicMatch) {
-                          topic = topicMatch[1].trim();
-                          // Remove the Topic line from explanation to keep it clean
-                          explanation = explanation.replace(/Topic:\s*.*$/im, '').trim();
-                      }
+                          // Clean Question Text (Remove Markdown ** if present)
+                          const q = line.replace(/^\*\*|\*\*$/g, '');
 
-                      newQuestions.push({
-                          question: q,
-                          options: opts,
-                          correctAnswer: (ansIdx >= 0 && ansIdx <= 3) ? ansIdx : 0,
-                          explanation: explanation,
-                          topic: topic
-                      });
-                      
-                      i = nextIndex;
+                          const opts = [lines[i+1], lines[i+2], lines[i+3], lines[i+4]];
+
+                          let ansLine = lines[i+5];
+                          ansLine = ansLine.replace(/^\*\*|\*\*$/g, '');
+                          let ansRaw = ansLine.replace(/^(Answer|Ans|Correct|उत्तर)\s*[:\s-]*\s*/i, '').trim();
+
+                          let ansIdx = parseInt(ansRaw) - 1;
+                          if (isNaN(ansIdx)) {
+                              const firstChar = ansRaw.charAt(0).toUpperCase();
+                              const map: any = { 'A': 0, 'B': 1, 'C': 2, 'D': 3 };
+                              if (map[firstChar] !== undefined) ansIdx = map[firstChar];
+                          }
+                          if (ansIdx < 0 || ansIdx > 3) ansIdx = 0;
+
+                          let expLines = [];
+                          let nextIndex = i + 6;
+
+                          while (nextIndex < lines.length) {
+                              const line = lines[nextIndex];
+                              const isNewQuestion = QUESTION_START_REGEX.test(line);
+                              if (isNewQuestion) break;
+                              expLines.push(line);
+                              nextIndex++;
+                          }
+
+                          let explanation = expLines.join('\n').trim();
+                          // Improved Explanation Parsing
+                          explanation = explanation.replace(/^\*\*/, '');
+                          explanation = explanation.replace(/^(Explanation|Exp|व्याख्या)\s*[:\s-]*(\*\*)?\s*/i, '');
+                          explanation = explanation.replace(/^\*\*/, '').trim();
+
+                          let topic = '';
+                          const topicMatch = explanation.match(/Topic:\s*(.*)/i);
+                          if (topicMatch) {
+                              topic = topicMatch[1].trim();
+                              explanation = explanation.replace(/Topic:\s*.*$/im, '').trim();
+                          }
+
+                          newQuestions.push({
+                              question: q,
+                              options: opts,
+                              correctAnswer: ansIdx,
+                              explanation: explanation,
+                              topic: topic
+                          });
+
+                          i = nextIndex;
+                      } else {
+                          i++;
+                      }
                   }
               }
 
@@ -1979,21 +1998,22 @@ const AdminDashboardInner: React.FC<Props> = ({ onNavigate, settings, onUpdateSe
                           }
 
                           // 2. CHECK FOR QUESTION START
-                          // Matches: "Q1.", "1.", "Q1", "(1)", "Question 1:" etc.
-                          // OR simply starts with typical question words if numbered list fails,
-                          // but strict numbering is safer for bulk.
-                          // Let's assume standard format: Q1. or 1.
                           const isQuestionStart = QUESTION_START_REGEX.test(line);
 
                           if (isQuestionStart) {
-                              // We found a question start. Now try to extract the block.
                               // Needs at least Q + 4 Options + Ans = 6 lines remaining
                               if (i + 5 >= lines.length) break;
 
-                              const q = line;
+                              // Clean Question Text (Remove Markdown ** if present)
+                              const q = line.replace(/^\*\*|\*\*$/g, '');
+
                               const opts = [lines[i+1], lines[i+2], lines[i+3], lines[i+4]];
 
-                              let ansRaw = lines[i+5].replace(/^(Answer|Ans|Correct)\s*[:\s-]*\s*/i, '').trim();
+                              let ansLine = lines[i+5];
+                              // Remove ** wrapper
+                              ansLine = ansLine.replace(/^\*\*|\*\*$/g, '');
+                              // Remove Label
+                              let ansRaw = ansLine.replace(/^(Answer|Ans|Correct|उत्तर)\s*[:\s-]*\s*/i, '').trim();
 
                               // Flexible Answer Parsing
                               let ansIdx = -1;
@@ -2005,7 +2025,7 @@ const AdminDashboardInner: React.FC<Props> = ({ onNavigate, settings, onUpdateSe
                                   const map: any = { 'A': 0, 'B': 1, 'C': 2, 'D': 3 };
                                   if (map[firstChar] !== undefined) ansIdx = map[firstChar];
                               }
-                              // Default to 0 (A) if parsing fails, but warn?
+                              // Default to 0 (A) if parsing fails
                               if (ansIdx < 0 || ansIdx > 3) ansIdx = 0;
 
                               // Parse Explanation (Optional lines until next Q/Topic)
@@ -2015,19 +2035,22 @@ const AdminDashboardInner: React.FC<Props> = ({ onNavigate, settings, onUpdateSe
                               while (nextIndex < lines.length) {
                                   const nextLine = lines[nextIndex];
                                   const isNextTopic = /^<TOPIC:\s*(.*?)>/i.test(nextLine);
-                                  // Check if line is a new question start (e.g. "Q1." or "1.")
                                   const isNextQ = QUESTION_START_REGEX.test(nextLine);
 
-                                  // Stop if next line looks like a new item
                                   if (isNextQ || isNextTopic) break;
 
                                   expLines.push(nextLine);
                                   nextIndex++;
                               }
 
-                              let explanation = expLines.join('\n');
-                              // Remove "Explanation:" prefix if it exists in the joined text (or first line)
-                              explanation = explanation.replace(/^(Explanation|Exp)\s*[:\s-]*\s*/i, '');
+                              let explanation = expLines.join('\n').trim();
+                              // Improved Explanation Parsing
+                              // 1. Remove leading **
+                              explanation = explanation.replace(/^\*\*/, '');
+                              // 2. Remove Label
+                              explanation = explanation.replace(/^(Explanation|Exp|व्याख्या)\s*[:\s-]*(\*\*)?\s*/i, '');
+                              // 3. Remove leading ** again if left
+                              explanation = explanation.replace(/^\*\*/, '').trim();
 
                               // Parse Inline Topic (if any) overrides global
                               let topic = '';
@@ -2047,7 +2070,6 @@ const AdminDashboardInner: React.FC<Props> = ({ onNavigate, settings, onUpdateSe
 
                               i = nextIndex;
                           } else {
-                              // If line doesn't look like Q start or Topic, skip it (maybe garbage or header)
                               i++;
                           }
                       }
@@ -4358,200 +4380,6 @@ Capital of India?       Mumbai  Delhi   Kolkata Chennai 2       Delhi is the cap
                                   </button>
                               </div>
 
-                               {/* WATERMARK DESIGNER */}
-                               <div className="bg-slate-800 p-6 rounded-2xl border border-slate-700 text-white space-y-6">
-                                  <div className="flex items-center gap-2 mb-2">
-                                      <PenTool className="text-purple-400" size={20} />
-                                      <h4 className="font-bold text-lg">Watermark Designer</h4>
-                                  </div>
-
-                            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                                      {/* CONTROLS */}
-                                      <div className="space-y-4">
-                                          <div>
-                                              <label className="text-[10px] font-bold text-slate-400 uppercase">Text</label>
-                                              <input 
-                                                  type="text" 
-                                                  value={editConfig.watermarkConfig?.text || editConfig.watermarkText || ''} 
-                                                  onChange={e => {
-                                                      const newText = e.target.value;
-                                                      // Sync legacy field for compatibility
-                                                      const newConfig = { 
-                                                          ...(editConfig.watermarkConfig || { opacity: 0.3, color: '#000000', backgroundColor: 'transparent', fontSize: 20, isRepeating: true, positionX: 50, positionY: 50, rotation: -45 }), 
-                                                          text: newText 
-                                                      };
-                                                      setEditConfig({...editConfig, watermarkText: newText, watermarkConfig: newConfig});
-                                                  }}
-                                                  className="w-full p-2 bg-slate-900 border border-slate-600 rounded-lg text-sm text-white font-mono"
-                                                  placeholder="Watermark Text" 
-                                              />
-                                          </div>
-
-                                          <div className="flex gap-2">
-                                              <button 
-                                                  onClick={() => setEditConfig({
-                                                      ...editConfig, 
-                                                      watermarkConfig: { ...editConfig.watermarkConfig!, isRepeating: true }
-                                                  })}
-                                                  className={`flex-1 py-2 text-xs font-bold rounded-lg border ${editConfig.watermarkConfig?.isRepeating !== false ? 'bg-purple-600 border-purple-500' : 'bg-slate-900 border-slate-600 text-slate-400'}`}
-                                              >
-                                                  🔁 Repeat (All Over)
-                                              </button>
-                                              <button 
-                                                  onClick={() => setEditConfig({
-                                                      ...editConfig, 
-                                                      watermarkConfig: { ...editConfig.watermarkConfig!, isRepeating: false, opacity: 1, backgroundColor: '#000000', color: '#ffffff', rotation: 0 }
-                                                  })}
-                                                  className={`flex-1 py-2 text-xs font-bold rounded-lg border ${editConfig.watermarkConfig?.isRepeating === false ? 'bg-purple-600 border-purple-500' : 'bg-slate-900 border-slate-600 text-slate-400'}`}
-                                              >
-                                                  🎯 Fixed (Redact)
-                                              </button>
-                                          </div>
-
-                                          <div className="grid grid-cols-2 gap-3">
-                                              <div>
-                                                  <label className="text-[10px] font-bold text-slate-400 uppercase">Opacity ({((editConfig.watermarkConfig?.opacity || 0.3)*100).toFixed(0)}%)</label>
-                                                  <input 
-                                                      type="range" min="0" max="1" step="0.1" 
-                                                      value={editConfig.watermarkConfig?.opacity ?? 0.3} 
-                                                      onChange={e => setEditConfig({...editConfig, watermarkConfig: {...editConfig.watermarkConfig!, opacity: parseFloat(e.target.value)}})}
-                                                      className="w-full accent-purple-500"
-                                                  />
-                                              </div>
-                                              <div>
-                                                  <label className="text-[10px] font-bold text-slate-400 uppercase">Size ({editConfig.watermarkConfig?.fontSize ?? 20}px)</label>
-                                                  <input 
-                                                      type="range" min="10" max="100" step="2" 
-                                                      value={editConfig.watermarkConfig?.fontSize ?? 20} 
-                                                      onChange={e => setEditConfig({...editConfig, watermarkConfig: {...editConfig.watermarkConfig!, fontSize: parseInt(e.target.value)}})}
-                                                      className="w-full accent-purple-500"
-                                                  />
-                                              </div>
-                                          </div>
-
-                                          <div className="grid grid-cols-2 gap-3">
-                                              <div>
-                                                  <label className="text-[10px] font-bold text-slate-400 uppercase">Text Color</label>
-                                                  <input type="color" value={editConfig.watermarkConfig?.color || '#000000'} onChange={e => setEditConfig({...editConfig, watermarkConfig: {...editConfig.watermarkConfig!, color: e.target.value}})} className="w-full h-8 rounded bg-transparent border border-slate-600" />
-                                              </div>
-                                              <div>
-                                                  <label className="text-[10px] font-bold text-slate-400 uppercase">Background</label>
-                                                  <div className="flex gap-2">
-                                                       <input type="color" value={editConfig.watermarkConfig?.backgroundColor === 'transparent' ? '#000000' : editConfig.watermarkConfig?.backgroundColor} onChange={e => setEditConfig({...editConfig, watermarkConfig: {...editConfig.watermarkConfig!, backgroundColor: e.target.value}})} className="w-8 h-8 rounded bg-transparent border border-slate-600" />
-                                                       <button onClick={() => setEditConfig({...editConfig, watermarkConfig: {...editConfig.watermarkConfig!, backgroundColor: 'transparent'}})} className="text-[10px] bg-slate-700 px-2 rounded text-slate-300">None</button>
-                                                  </div>
-                                              </div>
-                                          </div>
-
-                                          {/* POSITIONING CONTROLS (Only for Fixed) */}
-                                          {editConfig.watermarkConfig?.isRepeating === false && (
-                                              <div className="bg-slate-900 p-3 rounded-lg border border-slate-600">
-                                                  <p className="text-[10px] font-bold text-purple-400 uppercase mb-2">Positioning (Use Sliders)</p>
-                                                  <div className="space-y-2">
-                                                      <div className="flex items-center gap-2">
-                                                          <span className="text-xs text-slate-400 w-4">X</span>
-                                                          <input 
-                                                              type="range" min="0" max="100" 
-                                                              value={editConfig.watermarkConfig?.positionX ?? 50} 
-                                                              onChange={e => setEditConfig({...editConfig, watermarkConfig: {...editConfig.watermarkConfig!, positionX: parseInt(e.target.value)}})}
-                                                              className="flex-1 accent-blue-500"
-                                                          />
-                                                          <span className="text-xs text-slate-400 w-8">{editConfig.watermarkConfig?.positionX}%</span>
-                                                      </div>
-                                                      <div className="flex items-center gap-2">
-                                                          <span className="text-xs text-slate-400 w-4">Y</span>
-                                                          <input 
-                                                              type="range" min="0" max="100" 
-                                                              value={editConfig.watermarkConfig?.positionY ?? 50} 
-                                                              onChange={e => setEditConfig({...editConfig, watermarkConfig: {...editConfig.watermarkConfig!, positionY: parseInt(e.target.value)}})}
-                                                              className="flex-1 accent-blue-500"
-                                                          />
-                                                          <span className="text-xs text-slate-400 w-8">{editConfig.watermarkConfig?.positionY}%</span>
-                                                      </div>
-                                                  </div>
-                                              </div>
-                                          )}
-                                      </div>
-
-                                      {/* LIVE PREVIEW BOX */}
-                                      <div className="flex flex-col gap-2">
-                                          <div className="flex justify-between items-center">
-                                              <label className="text-[10px] font-bold text-slate-400 uppercase">Preview PDF (Upload Local File)</label>
-                                              <input 
-                                                  type="file" 
-                                                  accept="application/pdf"
-                                                  onChange={(e) => {
-                                                      if(e.target.files && e.target.files[0]) {
-                                                          setPreviewPdfFile(e.target.files[0]);
-                                                      }
-                                                  }}
-                                                  className="text-[10px] text-slate-500 file:mr-2 file:py-1 file:px-2 file:rounded-full file:border-0 file:text-[10px] file:font-bold file:bg-blue-50 file:text-blue-700 hover:file:bg-blue-100"
-                                              />
-                                          </div>
-
-                                          <div className="relative bg-slate-900 border-2 border-slate-600 rounded-xl overflow-hidden min-h-[400px] flex items-center justify-center">
-                                              {previewPdfFile ? (
-                                                  <Document
-                                                      file={previewPdfFile}
-                                                      onLoadSuccess={onDocumentLoadSuccess}
-                                                      className="relative shadow-2xl" 
-                                                  >
-                                                      <Page 
-                                                          pageNumber={1} 
-                                                          width={300} 
-                                                          renderTextLayer={false}
-                                                          renderAnnotationLayer={false}
-                                                      />
-                                                      
-                                                      {/* WATERMARK OVERLAY - ABSOLUTE TO PAGE */}
-                                                      <div className="absolute inset-0 pointer-events-none overflow-hidden z-10">
-                                                          {editConfig.watermarkConfig?.isRepeating !== false ? (
-                                                              /* REPEATING PREVIEW */
-                                                              <div className="w-full h-full flex flex-col items-center justify-center gap-12 opacity-100">
-                                                                  {Array.from({length: 6}).map((_, i) => (
-                                                                      <div key={i} style={{ transform: `rotate(${editConfig.watermarkConfig?.rotation ?? -45}deg)` }}>
-                                                                          <span style={{
-                                                                              color: editConfig.watermarkConfig?.color || '#000000',
-                                                                              backgroundColor: editConfig.watermarkConfig?.backgroundColor || 'transparent',
-                                                                              opacity: editConfig.watermarkConfig?.opacity ?? 0.3,
-                                                                              fontSize: `${(editConfig.watermarkConfig?.fontSize ?? 20) / 2}px`, 
-                                                                              padding: '4px 12px',
-                                                                              fontWeight: '900',
-                                                                              textTransform: 'uppercase'
-                                                                          }}>
-                                                                              {editConfig.watermarkConfig?.text || 'WATERMARK'}
-                                                                          </span>
-                                                                      </div>
-                                                                  ))}
-                                                              </div>
-                                                          ) : (
-                                                              /* FIXED POSITION PREVIEW */
-                                                              <div 
-                                                                  className="absolute px-4 py-2 font-black uppercase tracking-widest shadow-xl whitespace-nowrap"
-                                                                  style={{
-                                                                      left: `${editConfig.watermarkConfig?.positionX ?? 50}%`,
-                                                                      top: `${editConfig.watermarkConfig?.positionY ?? 50}%`,
-                                                                      transform: 'translate(-50%, -50%)',
-                                                                      color: editConfig.watermarkConfig?.color || '#ffffff',
-                                                                      backgroundColor: editConfig.watermarkConfig?.backgroundColor || '#000000',
-                                                                      opacity: editConfig.watermarkConfig?.opacity ?? 1,
-                                                                      fontSize: `${(editConfig.watermarkConfig?.fontSize ?? 20) / 1.5}px`
-                                                                  }}
-                                                              >
-                                                                  {editConfig.watermarkConfig?.text || 'REDACTED'}
-                                                              </div>
-                                                          )}
-                                                      </div>
-                                                  </Document>
-                                              ) : (
-                                                  <div className="absolute inset-0 opacity-20 pointer-events-none flex items-center justify-center">
-                                                      <FileText size={64} className="text-slate-500" />
-                                                      <span className="absolute mt-20 text-slate-500 font-bold">UPLOAD PDF TO PREVIEW</span>
-                                                  </div>
-                                              )}
-                                          </div>
-                                      </div>
-                                  </div>
 
                   {/* NEW: FORCE UPDATE SETTINGS */}
                   <div className="bg-red-50 p-6 rounded-2xl border border-red-100 mt-6">
@@ -4586,7 +4414,6 @@ Capital of India?       Mumbai  Delhi   Kolkata Chennai 2       Delhi is the cap
                           </div>
                       </div>
                   </div>
-                               </div>
 
                               <div className="flex gap-2">
                                   <label className="flex items-center gap-2 cursor-pointer bg-white px-3 py-3 rounded-xl border border-blue-200">
@@ -4598,7 +4425,7 @@ Capital of India?       Mumbai  Delhi   Kolkata Chennai 2       Delhi is the cap
                                       />
                                       <span className="text-xs font-bold text-slate-500">Hide Notes</span>
                                   </label>
-                                  <button onClick={saveChapterContent} className="flex-1 bg-blue-600 text-white font-bold py-3 rounded-xl shadow hover:bg-blue-700">Save PDF Links & Watermark</button>
+                                  <button onClick={saveChapterContent} className="flex-1 bg-blue-600 text-white font-bold py-3 rounded-xl shadow hover:bg-blue-700">Save PDF Links</button>
                               </div>
                           </div>
                       )}
