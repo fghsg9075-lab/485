@@ -535,7 +535,7 @@ export const PdfView: React.FC<Props> = ({
                                }
 
                                // Enhanced HTML Detection: Check for specific HTML tags even if content doesn't start with '<'
-                               const hasHtmlTags = /<(h[1-6]|p|div|ul|ol|li|table|tr|td|th|br|img|span|b|i|strong|em|small|big|mark|blockquote|pre|code|center|font|u|s|sub|sup|dl|dt|dd|figure|figcaption|article|section|header|footer|nav|aside|main)\b/i.test(contentToRender);
+                               const hasHtmlTags = /<(a|iframe|video|audio|source|track|canvas|svg|path|circle|rect|line|polyline|polygon|text|g|defs|marker|clipPath|style|script|link|meta|head|title|body|html|hr|input|button|select|textarea|form|label|option|optgroup|fieldset|legend|datalist|output|progress|meter|details|summary|dialog|h[1-6]|p|div|ul|ol|li|table|tr|td|th|br|img|span|b|i|strong|em|small|big|mark|blockquote|pre|code|center|font|u|s|sub|sup|dl|dt|dd|figure|figcaption|article|section|header|footer|nav|aside|main)\b/i.test(contentToRender);
                                const isHtml = contentToRender.trim().startsWith('<') || (hasHtmlTags && !contentToRender.includes('```'));
 
                                return isHtml ? (
