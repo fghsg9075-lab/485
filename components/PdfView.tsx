@@ -5,7 +5,7 @@ import remarkMath from 'remark-math';
 import rehypeKatex from 'rehype-katex';
 import 'katex/dist/katex.min.css';
 import { Chapter, User, Subject, SystemSettings, HtmlModule, PremiumNoteSlot } from '../types';
-import { FileText, Lock, ArrowLeft, Crown, Star, CheckCircle, AlertCircle, Globe, Maximize, Layers, HelpCircle, Minus, Plus, Volume2, Square, Zap, ChevronDown, ChevronRight } from 'lucide-react';
+import { FileText, Lock, ArrowLeft, Crown, Star, CheckCircle, AlertCircle, Globe, Maximize, Layers, HelpCircle, Minus, Plus, Volume2, Square, Zap } from 'lucide-react';
 import { CustomAlert } from './CustomDialogs';
 import { getChapterData, saveUserToLive } from '../firebase';
 import { CreditConfirmationModal } from './CreditConfirmationModal';
@@ -37,7 +37,6 @@ export const PdfView: React.FC<Props> = ({
   const [activePdf, setActivePdf] = useState<string | null>(null);
   const [activeLang, setActiveLang] = useState<'ENGLISH' | 'HINDI'>('ENGLISH'); // NEW: Language State
   const [pendingPdf, setPendingPdf] = useState<{type: string, price: number, link: string} | null>(null);
-  const [expandedTopics, setExpandedTopics] = useState<Record<string, boolean>>({});
 
   // ZOOM STATE
   const [zoom, setZoom] = useState(1);
@@ -464,106 +463,6 @@ export const PdfView: React.FC<Props> = ({
 
        {activePdf ? (
            <div ref={pdfContainerRef} className="h-[calc(100vh-80px)] w-full bg-slate-100 relative overflow-auto">
-               {/* WATERMARK OVERLAY (If Configured) */}
-               {(() => {
-                   // 1. Check Global Switch (Admin Dashboard)
-                   if (settings?.watermarkConfig?.enabled === false) return null;
-
-                   // 2. Determine Effective Config (Global > Local override if needed, or Local > Global?
-                   // Usually Global sets the template, but Chapter might want custom text.
-                   // Let's use Global as base, allow Content to override Text/Style if provided,
-                   // BUT if Global is enabled, we show it.
-
-                   // Fallback logic:
-                   // If content has specific config, use it.
-                   // ELSE use Global config.
-                   // ELSE use legacy content text.
-
-                   const globalConfig = settings?.watermarkConfig;
-                   const localConfig = contentData?.watermarkConfig;
-
-                   // Merge: Local overrides Global defaults if present
-                   const config = {
-                       ...{
-                           text: settings?.appName || 'IIC',
-                           opacity: 0.2,
-                           color: '#9ca3af',
-                           backgroundColor: 'transparent',
-                           fontSize: 24,
-                           isRepeating: true,
-                           rotation: -12,
-                           enabled: true
-                       },
-                       ...globalConfig, // Global Settings applied
-                       ...localConfig,  // Chapter specific overrides (if any)
-                   };
-
-                   // Legacy Text Fallback (if config text is default but legacy exists)
-                   if (contentData?.watermarkText && !localConfig) {
-                       config.text = contentData.watermarkText;
-                   }
-
-                   // Final check if enabled (Local might have disabled it too, if we allowed that)
-                   if (config.enabled === false) return null;
-                   if (!config.text) return null;
-
-                   return (
-                   <div className="absolute inset-0 z-10 pointer-events-none overflow-hidden select-none">
-                       {(() => {
-                           if (config.isRepeating !== false) {
-                               // REPEATING PATTERN
-                               return (
-                                   <div className="w-full h-full flex flex-col items-center justify-center gap-24">
-                                        {Array.from({length: 8}).map((_, i) => (
-                                            <div key={i} style={{ transform: `rotate(${config.rotation ?? -12}deg)` }}>
-                                                <span 
-                                                    style={{
-                                                        color: config.color,
-                                                        backgroundColor: config.backgroundColor,
-                                                        opacity: config.opacity,
-                                                        fontSize: `${config.fontSize}px`,
-                                                        padding: '8px 24px',
-                                                        fontWeight: '900',
-                                                        textTransform: 'uppercase',
-                                                        letterSpacing: '0.1em',
-                                                        boxShadow: '0 10px 15px -3px rgba(0, 0, 0, 0.1)'
-                                                    }}
-                                                >
-                                                    {config.text}
-                                                </span>
-                                            </div>
-                                        ))}
-                                   </div>
-                               );
-                           } else {
-                               // FIXED POSITION (Redaction Mode)
-                               return (
-                                   <div 
-                                       className="absolute whitespace-nowrap uppercase tracking-widest font-black shadow-2xl"
-                                       style={{
-                                           left: `${config.positionX ?? 50}%`,
-                                           top: `${config.positionY ?? 50}%`,
-                                           transform: 'translate(-50%, -50%)',
-                                           color: config.color,
-                                           backgroundColor: config.backgroundColor,
-                                           opacity: config.opacity,
-                                           fontSize: `${config.fontSize}px`,
-                                           padding: '8px 16px',
-                                           pointerEvents: 'auto' // Allow blocking clicks if opaque? No, user said "hide word".
-                                           // Actually, if it's over iframe, it blocks clicks automatically if pointer-events-auto.
-                                           // But if we want to allow scrolling, we can't block events on the overlay container, 
-                                           // but maybe the watermark itself? 
-                                           // If the watermark is "1 word ko chhupana", it's small. Blocking clicks on it is fine.
-                                       }}
-                                   >
-                                       {config.text}
-                                   </div>
-                               );
-                           }
-                       })()}
-                   </div>
-                   );
-               })()}
                
                {/* POP-OUT BLOCKER (Top Bar) */}
                <div className="absolute top-0 left-0 right-0 h-16 z-20 bg-transparent"></div>
@@ -751,11 +650,8 @@ export const PdfView: React.FC<Props> = ({
                    </div>
 
                    {/* TOPIC NOTES SECTION */}
-                   {contentData.topicNotes && (Array.isArray(contentData.topicNotes) ? contentData.topicNotes.length > 0 : Object.keys(contentData.topicNotes).length > 0) && (() => {
-                       // Normalize to array
-                       const rawNotes = contentData.topicNotes;
-                       const notes = Array.isArray(rawNotes) ? rawNotes : Object.values(rawNotes);
-
+                   {contentData.topicNotes && contentData.topicNotes.length > 0 && (() => {
+                       const notes = contentData.topicNotes;
                        // Group by Topic
                        const grouped: Record<string, any[]> = {};
                        notes.forEach((n: any) => {
@@ -771,60 +667,47 @@ export const PdfView: React.FC<Props> = ({
                                    <FileText size={18} className="text-orange-600" /> Topic Notes
                                </h4>
                                <div className="space-y-3">
-                                   {topics.map((topic, idx) => {
-                                       const isExpanded = expandedTopics[topic];
-                                       const count = grouped[topic].length;
-
-                                       return (
+                                   {topics.map((topic, idx) => (
                                        <div key={idx} className="bg-white rounded-xl border border-orange-100 overflow-hidden shadow-sm">
-                                           <button
-                                               onClick={() => setExpandedTopics(prev => ({...prev, [topic]: !prev[topic]}))}
-                                               className="w-full bg-orange-50 px-4 py-3 flex items-center justify-between hover:bg-orange-100 transition-colors"
-                                           >
-                                               <div className="flex items-center gap-2">
-                                                   <h5 className="font-bold text-orange-900 text-sm">{topic}</h5>
-                                                   <span className="text-[10px] font-bold text-orange-600 bg-white px-2 py-0.5 rounded-full border border-orange-200">
-                                                       {count} Note{count !== 1 ? 's' : ''}
-                                                   </span>
-                                               </div>
-                                               {isExpanded ? <ChevronDown size={16} className="text-orange-400" /> : <ChevronRight size={16} className="text-orange-400" />}
-                                           </button>
-
-                                           {isExpanded && (
-                                               <div className="p-2 space-y-1 animate-in slide-in-from-top-2 duration-200">
-                                                   {grouped[topic].map((note, nIdx) => (
-                                                       <button
-                                                           key={nIdx}
-                                                           onClick={() => {
-                                                               if (note.isPremium) {
-                                                                   const isSubscribed = user.isPremium && user.subscriptionEndDate && new Date(user.subscriptionEndDate) > new Date();
-                                                                   if (!isSubscribed && user.role !== 'ADMIN') {
-                                                                        setAlertConfig({isOpen: true, message: "🔒 Premium Content! Please upgrade your plan to access this note."});
-                                                                        return;
-                                                                   }
+                                           <div className="bg-orange-50 px-4 py-3 flex items-center justify-between">
+                                               <h5 className="font-bold text-orange-900 text-sm">{topic}</h5>
+                                               <span className="text-[10px] font-bold text-orange-600 bg-white px-2 py-0.5 rounded-full border border-orange-200">
+                                                   {grouped[topic].length} Notes
+                                               </span>
+                                           </div>
+                                           <div className="p-2 space-y-1">
+                                               {grouped[topic].map((note, nIdx) => (
+                                                   <button
+                                                       key={nIdx}
+                                                       onClick={() => {
+                                                           if (note.isPremium) {
+                                                               const isSubscribed = user.isPremium && user.subscriptionEndDate && new Date(user.subscriptionEndDate) > new Date();
+                                                               if (!isSubscribed && user.role !== 'ADMIN') {
+                                                                    setAlertConfig({isOpen: true, message: "🔒 Premium Content! Please upgrade your plan to access this note."});
+                                                                    return;
                                                                }
-                                                               // Open Content
-                                                               if (note.content) {
-                                                                   setActivePdf(note.content);
-                                                               } else {
-                                                                   setAlertConfig({isOpen: true, message: "Empty content."});
-                                                               }
-                                                           }}
-                                                           className="w-full text-left p-3 rounded-lg hover:bg-slate-50 flex items-center justify-between group transition-colors border border-transparent hover:border-slate-100"
-                                                       >
-                                                           <div className="flex items-center gap-3">
-                                                               <div className={`w-8 h-8 rounded-full flex items-center justify-center ${note.isPremium ? 'bg-purple-100 text-purple-600' : 'bg-slate-100 text-slate-500'}`}>
-                                                                   <FileText size={14} />
-                                                               </div>
-                                                               <span className="text-sm font-medium text-slate-700 group-hover:text-blue-600 transition-colors line-clamp-1">{note.title || 'Untitled Note'}</span>
+                                                           }
+                                                           // Open Content
+                                                           if (note.content) {
+                                                               setActivePdf(note.content);
+                                                           } else {
+                                                               setAlertConfig({isOpen: true, message: "Empty content."});
+                                                           }
+                                                       }}
+                                                       className="w-full text-left p-3 rounded-lg hover:bg-slate-50 flex items-center justify-between group transition-colors"
+                                                   >
+                                                       <div className="flex items-center gap-3">
+                                                           <div className={`w-8 h-8 rounded-full flex items-center justify-center ${note.isPremium ? 'bg-purple-100 text-purple-600' : 'bg-slate-100 text-slate-500'}`}>
+                                                               <FileText size={14} />
                                                            </div>
-                                                           {note.isPremium ? <Lock size={12} className="text-purple-400" /> : <ChevronRight size={14} className="text-slate-300 group-hover:text-slate-400" />}
-                                                       </button>
-                                                   ))}
-                                               </div>
-                                           )}
+                                                           <span className="text-sm font-medium text-slate-700 group-hover:text-blue-600 transition-colors line-clamp-1">{note.title || 'Untitled Note'}</span>
+                                                       </div>
+                                                       {note.isPremium && <Lock size={12} className="text-purple-400" />}
+                                                   </button>
+                                               ))}
+                                           </div>
                                        </div>
-                                   )})}
+                                   ))}
                                </div>
                            </div>
                        );

@@ -309,7 +309,6 @@ export const VideoPlaylistView: React.FC<Props> = ({
                    brandingLogo={settings?.appLogo}
                    brandingLogoConfig={settings?.playerLogoConfig}
                    blockShare={settings?.playerBlockShare ?? true}
-                   watermarkConfig={settings?.watermarkConfig}
                />
            </div>
        ) : null}
