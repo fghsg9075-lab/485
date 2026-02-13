@@ -998,6 +998,11 @@ const AdminDashboardInner: React.FC<Props> = ({ onNavigate, settings, onUpdateSe
           }
       });
 
+      // SUBSCRIBE TO DEMANDS (Live Sync)
+      const unsubDemands = subscribeToDemands((liveDemands) => {
+          setDemands(liveDemands);
+      });
+
       return () => {
           clearInterval(interval);
           unsubUsers();
@@ -1032,11 +1037,6 @@ const AdminDashboardInner: React.FC<Props> = ({ onNavigate, settings, onUpdateSe
       const storedUsersStr = localStorage.getItem('nst_users');
       if (storedUsersStr) setUsers(JSON.parse(storedUsersStr));
       
-      // Subscribe to Demands (Live)
-      const unsubDemands = subscribeToDemands((liveDemands) => {
-          setDemands(liveDemands);
-      });
-
       // const reqStr = localStorage.getItem('nst_recovery_requests');
       // if (reqStr) setRecoveryRequests(JSON.parse(reqStr));
 
