@@ -4578,6 +4578,85 @@ Capital of India?       Mumbai  Delhi   Kolkata Chennai 2       Delhi is the cap
                                   </div>
                               </div>
 
+                              {/* TOPIC NOTES MANAGER (NEW) */}
+                              <div className="bg-orange-50 p-4 rounded-xl border border-orange-200">
+                                  <h4 id="topic-notes-manager-header" className="font-bold text-orange-900 mb-4 flex items-center gap-2">
+                                      <FileText size={20} /> Topic Notes Manager (New)
+                                  </h4>
+                                  <p className="text-xs text-orange-700 mb-4">
+                                      Add manual notes grouped by Topic. These will appear below Free/Premium notes.
+                                  </p>
+
+                                  <div className="space-y-4 mb-4">
+                                      {topicNotes.map((note, idx) => (
+                                          <div key={idx} className="bg-white p-4 rounded-lg border border-orange-100 shadow-sm space-y-3">
+                                              <div className="flex gap-2 items-center">
+                                                  <span className="text-xs font-bold text-slate-400 w-6">{idx + 1}</span>
+                                                  <input
+                                                      type="text"
+                                                      placeholder="Topic (e.g. Introduction)"
+                                                      value={note.topic}
+                                                      onChange={e => {
+                                                          const updated = [...topicNotes];
+                                                          updated[idx].topic = e.target.value;
+                                                          setTopicNotes(updated);
+                                                      }}
+                                                      className="flex-1 p-2 border rounded text-xs font-bold"
+                                                  />
+                                                  <input
+                                                      type="text"
+                                                      placeholder="Note Title"
+                                                      value={note.title}
+                                                      onChange={e => {
+                                                          const updated = [...topicNotes];
+                                                          updated[idx].title = e.target.value;
+                                                          setTopicNotes(updated);
+                                                      }}
+                                                      className="flex-1 p-2 border rounded text-xs"
+                                                  />
+                                                  <label className="flex items-center gap-1 cursor-pointer">
+                                                      <input
+                                                          type="checkbox"
+                                                          checked={note.isPremium}
+                                                          onChange={e => {
+                                                              const updated = [...topicNotes];
+                                                              updated[idx].isPremium = e.target.checked;
+                                                              setTopicNotes(updated);
+                                                          }}
+                                                          className="w-4 h-4 accent-purple-600"
+                                                      />
+                                                      <span className="text-[10px] font-bold text-slate-500">Premium</span>
+                                                  </label>
+                                                  <button onClick={() => setTopicNotes(prev => prev.filter((_, i) => i !== idx))} className="text-red-400 hover:text-red-600 p-2">
+                                                      <Trash2 size={16} />
+                                                  </button>
+                                              </div>
+
+                                              {/* Content Editor */}
+                                              <div>
+                                                  <p className="text-[10px] font-bold text-slate-400 uppercase mb-1">Note Content (HTML)</p>
+                                                  <SimpleRichTextEditor
+                                                      value={note.content}
+                                                      onChange={html => {
+                                                          const updated = [...topicNotes];
+                                                          updated[idx].content = html;
+                                                          setTopicNotes(updated);
+                                                      }}
+                                                      className="w-full p-3 border border-slate-200 rounded-xl text-sm min-h-[100px] max-h-[300px] overflow-y-auto focus:ring-2 focus:ring-orange-200 outline-none bg-slate-50"
+                                                  />
+                                              </div>
+                                          </div>
+                                      ))}
+                                  </div>
+
+                                  <button
+                                      onClick={() => setTopicNotes([...topicNotes, { id: Date.now().toString(), title: '', topic: '', content: '', isPremium: false }])}
+                                      className="w-full py-2 bg-white border border-orange-300 text-orange-600 font-bold rounded-lg hover:bg-orange-50 border-dashed"
+                                  >
+                                      + Add Topic Note
+                                  </button>
+                              </div>
+
                                {/* WATERMARK DESIGNER */}
                                <div className="bg-slate-800 p-6 rounded-2xl border border-slate-700 text-white space-y-6">
                                   <div className="flex items-center gap-2 mb-2">

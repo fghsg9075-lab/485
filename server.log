@@ -2,15 +2,11 @@
 > students@0.0.0 dev
 > vite
 
-Port 5000 is in use, trying another one...
 
-  VITE v6.4.1  ready in 788 ms
+  VITE v6.4.1  ready in 218 ms
 
-  ➜  Local:   http://localhost:5001/
-  ➜  Network: http://192.168.0.2:5001/
+  ➜  Local:   http://localhost:5000/
+  ➜  Network: http://192.168.0.2:5000/
 [BABEL] Note: The code generator has deoptimised the styling of /app/components/AdminDashboard.tsx as it exceeds the max of 500KB.
-9:14:14 AM [vite] (client) hmr update /components/LessonView.tsx
-9:53:39 AM [vite] (client) hmr update /components/LessonView.tsx
-9:53:48 AM [vite] (client) hmr update /components/LessonView.tsx
-10:23:45 AM [vite] (client) hmr update /components/LessonView.tsx
-10:24:08 AM [vite] (client) hmr update /components/StudentDashboard.tsx
+4:22:26 AM [vite] (client) hmr update /components/LessonView.tsx
+4:25:47 AM [vite] (client) hmr update /components/PdfView.tsx

@@ -12,6 +12,7 @@ import { storage } from '../utils/storage';
 import { getChapterData } from '../firebase';
 import { SpeakButton } from './SpeakButton';
 import { renderMathInHtml } from '../utils/mathUtils';
+import { speakWithHighlight, stopSpeaking } from '../utils/ttsHighlighter';
 
 interface Props {
   content: LessonContent | null;
@@ -159,109 +160,30 @@ export const LessonView: React.FC<Props> = ({
   // TTS STATE
   const [isSpeaking, setIsSpeaking] = useState(false);
   const [speechRate, setSpeechRate] = useState(1.0);
-  const speechRef = useRef<SpeechSynthesisUtterance | null>(null);
-  const currentTextRef = useRef<string | null>(null);
-  
-  // CHUNKING STATE
-  const chunksRef = useRef<string[]>([]);
-  const chunkIndexRef = useRef(0);
+  const contentRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
     return () => {
-        window.speechSynthesis.cancel();
+        stopSpeaking();
         setIsSpeaking(false);
     };
   }, [content]);
 
-  const speakChunk = () => {
-      if (chunkIndexRef.current >= chunksRef.current.length) {
+  const handleSpeak = () => {
+      if (isSpeaking) {
+          stopSpeaking();
           setIsSpeaking(false);
           return;
       }
 
-      const text = chunksRef.current[chunkIndexRef.current];
-      const utterance = new SpeechSynthesisUtterance(text);
-      utterance.rate = speechRate;
-
-      // Auto-detect Hindi PER CHUNK
-      const isHindi = /[\u0900-\u097F]/.test(text);
-      if (isHindi) {
-          utterance.lang = 'hi-IN';
-          const voices = window.speechSynthesis.getVoices();
-          const hindiVoice = voices.find(v => v.lang.includes('hi') || v.name.includes('Hindi') || v.lang === 'hi-IN');
-          if (hindiVoice) utterance.voice = hindiVoice;
-      }
-
-      utterance.onend = () => {
-          chunkIndexRef.current++;
-          speakChunk();
-      };
-      utterance.onerror = (e) => {
-          console.error("TTS Error", e);
-          setIsSpeaking(false);
-      };
-      
-      speechRef.current = utterance;
-      window.speechSynthesis.speak(utterance);
-  };
-
-  const handleSpeak = (text: string) => {
-      if (isSpeaking && currentTextRef.current === text) {
-          window.speechSynthesis.cancel();
-          setIsSpeaking(false);
-          currentTextRef.current = null;
-          return;
-      }
-
-      // FREE TTS - No Cost Deduction
-      startSpeaking(text);
-  };
-
-  const startSpeaking = (text: string) => {
-      window.speechSynthesis.cancel();
-      currentTextRef.current = text;
-      
-      // Clean text
-      let textToRead = text.replace(/<[^>]*>?/gm, ' '); // Replace HTML tags with space
-      textToRead = textToRead.replace(/&nbsp;/g, ' ');
-      textToRead = textToRead.replace(/[#*\-]/g, ''); // Remove markdown chars
-      textToRead = textToRead.replace(/\s+/g, ' ').trim();
-      
-      // Split into chunks (Sentences)
-      // More robust splitting for large texts (10k-20k words)
-      const rawChunks = textToRead.match(/[^.!?\n]+[.!?\n]*/g) || [textToRead];
-      
-      const processedChunks: string[] = [];
-      const MAX_CHUNK_LENGTH = 200;
-
-      rawChunks.forEach(chunk => {
-          let currentChunk = chunk.trim();
-          if (currentChunk.length === 0) return;
-
-          if (currentChunk.length > MAX_CHUNK_LENGTH) {
-              const subChunks = currentChunk.match(new RegExp(`.{1,${MAX_CHUNK_LENGTH}}(\\s|$)`, 'g')) || [currentChunk];
-              subChunks.forEach(sub => processedChunks.push(sub.trim()));
-          } else {
-              processedChunks.push(currentChunk);
-          }
-      });
-
-      chunksRef.current = processedChunks;
-      chunkIndexRef.current = 0;
-
-      if (chunksRef.current.length === 0) return;
-
-      setIsSpeaking(true);
-
-      // Ensure voices are loaded
-      if (window.speechSynthesis.getVoices().length === 0) {
-          const handleVoicesChanged = () => {
-              speakChunk();
-              window.speechSynthesis.removeEventListener('voiceschanged', handleVoicesChanged);
-          };
-          window.speechSynthesis.addEventListener('voiceschanged', handleVoicesChanged);
-      } else {
-          speakChunk();
+      if (contentRef.current) {
+          setIsSpeaking(true);
+          speakWithHighlight(
+              contentRef.current,
+              speechRate,
+              language === 'Hindi' ? 'hi-IN' : 'en-US',
+              () => setIsSpeaking(false)
+          );
       }
   };
 
@@ -272,10 +194,9 @@ export const LessonView: React.FC<Props> = ({
       setSpeechRate(newRate);
       
       if (isSpeaking) {
-          window.speechSynthesis.cancel();
-          setTimeout(() => {
-              speakChunk();
-          }, 50);
+          // Restart with new speed
+          handleSpeak(); // Stop
+          setTimeout(() => handleSpeak(), 100); // Start
       }
   };
 
@@ -364,7 +285,7 @@ export const LessonView: React.FC<Props> = ({
                           >
                               <Globe size={14} /> {language === 'English' ? 'Hindi (हिंदी)' : 'English'}
                           </button>
-                      <button onClick={() => handleSpeak(decodedContent)} className={`p-2 rounded-full transition-all ${isSpeaking ? 'bg-red-100 text-red-600 animate-pulse' : 'bg-slate-100 text-slate-600 hover:bg-slate-200'}`} title="Listen (FREE)">
+                      <button onClick={handleSpeak} className={`p-2 rounded-full transition-all ${isSpeaking ? 'bg-red-100 text-red-600 animate-pulse' : 'bg-slate-100 text-slate-600 hover:bg-slate-200'}`} title="Listen (FREE)">
                               {isSpeaking ? <Square size={18} fill="currentColor" /> : <Volume2 size={18} />}
                       </button>
                       {/* DOWNLOAD BUTTON */}
@@ -379,6 +300,7 @@ export const LessonView: React.FC<Props> = ({
                   </header>
                   <div className="flex-1 overflow-y-auto w-full pt-16 pb-20 px-4 md:px-8 bg-white">
                       <div 
+                          ref={contentRef}
                           className="prose prose-slate max-w-none prose-p:leading-relaxed prose-p:text-slate-700 prose-headings:font-black font-sans"
                           dangerouslySetInnerHTML={{ __html: decodedContent }}
                       />
@@ -487,7 +409,7 @@ export const LessonView: React.FC<Props> = ({
                       >
                           <Globe size={14} /> {language === 'English' ? 'Hindi (हिंदी)' : 'English'}
                       </button>
-                      <button onClick={() => handleSpeak(content.content)} className={`p-2 rounded-full transition-all ${isSpeaking ? 'bg-red-100 text-red-600 animate-pulse' : 'bg-slate-100 text-slate-600 hover:bg-slate-200'}`} title="Listen (FREE)">
+                      <button onClick={handleSpeak} className={`p-2 rounded-full transition-all ${isSpeaking ? 'bg-red-100 text-red-600 animate-pulse' : 'bg-slate-100 text-slate-600 hover:bg-slate-200'}`} title="Listen (FREE)">
                           {isSpeaking ? <Square size={18} fill="currentColor" /> : <Volume2 size={18} />}
                       </button>
                       {/* DOWNLOAD BUTTON */}
@@ -501,7 +423,7 @@ export const LessonView: React.FC<Props> = ({
                   </div>
               </header>
               <div className="flex-1 overflow-y-auto p-6 bg-white">
-                  <div className="prose prose-slate max-w-none prose-p:leading-relaxed prose-p:text-slate-700 prose-headings:font-black font-sans">
+                  <div ref={contentRef} className="prose prose-slate max-w-none prose-p:leading-relaxed prose-p:text-slate-700 prose-headings:font-black font-sans">
                       <ReactMarkdown remarkPlugins={[remarkMath]} rehypePlugins={[rehypeKatex]}>
                           {content.content}
                       </ReactMarkdown>
