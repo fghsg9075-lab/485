@@ -40,6 +40,7 @@ import { MonthlyMarksheet } from './MonthlyMarksheet';
 import { SearchResult } from '../utils/syllabusSearch';
 import { AiDeepAnalysis } from './AiDeepAnalysis';
 import { RevisionHub } from './RevisionHub'; // NEW
+import { McqReviewHub } from './McqReviewHub'; // NEW
 import { CustomBloggerPage } from './CustomBloggerPage';
 import { ReferralPopup } from './ReferralPopup';
 import { StudentAiAssistant } from './StudentAiAssistant';
@@ -1117,22 +1118,16 @@ export const StudentDashboard: React.FC<Props> = ({ user, dailyStudySeconds, onS
                   onTabChange={onTabChange}
                   settings={settings}
                   onNavigateContent={(type, chapterId, topicName) => {
-                      // NEW: Handle Topic Navigation
+                      // Only for PDF/Notes now
                       setTopicFilter(topicName);
 
                       if (type === 'PDF') {
-                          // Standard PDF Flow: Select Chapter -> View
                           setLoadingChapters(true);
                           fetchChapters(user.board || 'CBSE', user.classLevel || '10', user.stream || 'Science', null, 'English').then(allChapters => {
                               const ch = allChapters.find(c => c.id === chapterId);
                               if (ch) {
                                   onTabChange('PDF');
-                                  // Infer subject if possible, or use generic
                                   const subjects = getSubjectsList(user.classLevel || '10', user.stream || 'Science');
-                                  // Need to set selectedSubject for views to work.
-                                  // Since RevisionHub might not pass subject, we default to first or find match if chapter has subjectID (it doesn't usually).
-                                  // For now, use the first subject or 'General'.
-                                  // IMPROVEMENT: Pass subjectId from RevisionHub.
                                   if (!selectedSubject) setSelectedSubject(subjects[0]);
 
                                   setSelectedChapter(ch);
@@ -1143,26 +1138,37 @@ export const StudentDashboard: React.FC<Props> = ({ user, dailyStudySeconds, onS
                               }
                               setLoadingChapters(false);
                           });
-                      } else if (type === 'MCQ') {
-                          // Similar logic for MCQ
-                          setLoadingChapters(true);
-                          fetchChapters(user.board || 'CBSE', user.classLevel || '10', user.stream || 'Science', null, 'English').then(allChapters => {
-                              const ch = allChapters.find(c => c.id === chapterId);
-                              if (ch) {
-                                  onTabChange('MCQ');
-                                  // Infer subject
-                                  const subjects = getSubjectsList(user.classLevel || '10', user.stream || 'Science');
-                                  if (!selectedSubject) setSelectedSubject(subjects[0]);
-
-                                  setSelectedChapter(ch);
-                                  setContentViewStep('PLAYER');
-                                  setFullScreen(true);
-                              } else {
-                                  showAlert("Test not found.", "ERROR");
-                              }
-                              setLoadingChapters(false);
-                          });
                       }
+                  }}
+              />
+          );
+      }
+
+      // 3. MCQ REVIEW HUB
+      if (activeTab === 'MCQ_REVIEW') {
+          return (
+              <McqReviewHub
+                  user={user}
+                  onTabChange={onTabChange}
+                  settings={settings}
+                  onNavigateContent={(type, chapterId) => {
+                      // Navigate to MCQ Player
+                      setLoadingChapters(true);
+                      fetchChapters(user.board || 'CBSE', user.classLevel || '10', user.stream || 'Science', null, 'English').then(allChapters => {
+                          const ch = allChapters.find(c => c.id === chapterId);
+                          if (ch) {
+                              onTabChange('MCQ');
+                              const subjects = getSubjectsList(user.classLevel || '10', user.stream || 'Science');
+                              if (!selectedSubject) setSelectedSubject(subjects[0]);
+
+                              setSelectedChapter(ch);
+                              setContentViewStep('PLAYER');
+                              setFullScreen(true);
+                          } else {
+                              showAlert("Test not found.", "ERROR");
+                          }
+                          setLoadingChapters(false);
+                      });
                   }}
               />
           );
@@ -1695,12 +1701,12 @@ export const StudentDashboard: React.FC<Props> = ({ user, dailyStudySeconds, onS
                 
                 <button onClick={() => onTabChange('REVISION' as any)} className={`flex flex-col items-center justify-center w-full h-full ${activeTab === 'REVISION' ? 'text-blue-600' : 'text-slate-400'}`}>
                     <BrainCircuit size={24} fill={activeTab === 'REVISION' ? "currentColor" : "none"} />
-                    <span className="text-[10px] font-bold mt-1">Revision</span>
+                    <span className="text-[10px] font-bold mt-1">Notes</span>
                 </button>
 
-                <button onClick={() => onTabChange('HISTORY')} className={`flex flex-col items-center justify-center w-full h-full ${activeTab === 'HISTORY' ? 'text-blue-600' : 'text-slate-400'}`}>
-                    <History size={24} className={activeTab === 'HISTORY' ? "text-blue-600" : ""} />
-                    <span className="text-[10px] font-bold mt-1">History</span>
+                <button onClick={() => onTabChange('MCQ_REVIEW' as any)} className={`flex flex-col items-center justify-center w-full h-full ${activeTab === 'MCQ_REVIEW' ? 'text-blue-600' : 'text-slate-400'}`}>
+                    <CheckSquare size={24} fill={activeTab === 'MCQ_REVIEW' ? "currentColor" : "none"} />
+                    <span className="text-[10px] font-bold mt-1">Review</span>
                 </button>
 
                 <button onClick={() => onTabChange('PROFILE')} className={`flex flex-col items-center justify-center w-full h-full ${activeTab === 'PROFILE' ? 'text-blue-600' : 'text-slate-400'}`}>

@@ -418,18 +418,12 @@ export const RevisionHub: React.FC<Props> = ({ user, onTabChange, settings, onNa
                                         </div>
 
                                         {/* Main Action Buttons (Chapter Level) */}
-                                        <div className="grid grid-cols-2 gap-2 mb-2">
+                                        <div className="mb-2">
                                             <button
                                                 onClick={() => onNavigateContent ? onNavigateContent('PDF', topic.id) : null}
-                                                className="bg-blue-50 text-blue-600 py-2 rounded-lg text-xs font-bold hover:bg-blue-600 hover:text-white transition-colors flex items-center justify-center gap-1"
+                                                className="w-full bg-blue-50 text-blue-600 py-3 rounded-lg text-xs font-bold hover:bg-blue-600 hover:text-white transition-colors flex items-center justify-center gap-2 shadow-sm"
                                             >
-                                                <FileText size={14} /> Chapter Notes
-                                            </button>
-                                            <button
-                                                onClick={() => onNavigateContent ? onNavigateContent('MCQ', topic.id) : null}
-                                                className="bg-indigo-50 text-indigo-600 py-2 rounded-lg text-xs font-bold hover:bg-indigo-600 hover:text-white transition-colors flex items-center justify-center gap-1"
-                                            >
-                                                <CheckSquare size={14} /> Chapter Test
+                                                <FileText size={16} /> Read Chapter Notes
                                             </button>
                                         </div>
 
@@ -460,17 +454,10 @@ export const RevisionHub: React.FC<Props> = ({ user, onTabChange, settings, onNa
                                                             <div className="flex items-center gap-1">
                                                                 <button
                                                                     onClick={() => onNavigateContent ? onNavigateContent('PDF', topic.id, subTopic) : null}
-                                                                    className="p-1.5 text-blue-600 bg-white rounded-md shadow-sm hover:bg-blue-600 hover:text-white transition-colors"
+                                                                    className="p-1.5 text-blue-600 bg-white rounded-md shadow-sm hover:bg-blue-600 hover:text-white transition-colors flex items-center gap-1 px-2"
                                                                     title="Read Notes"
                                                                 >
-                                                                    <FileText size={12} />
-                                                                </button>
-                                                                <button
-                                                                    onClick={() => onNavigateContent ? onNavigateContent('MCQ', topic.id, subTopic) : null}
-                                                                    className="p-1.5 text-indigo-600 bg-white rounded-md shadow-sm hover:bg-indigo-600 hover:text-white transition-colors"
-                                                                    title="Take Test"
-                                                                >
-                                                                    <CheckSquare size={12} />
+                                                                    <FileText size={12} /> Read
                                                                 </button>
                                                             </div>
                                                         </div>
