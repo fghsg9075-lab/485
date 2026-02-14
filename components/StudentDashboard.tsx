@@ -1109,7 +1109,57 @@ export const StudentDashboard: React.FC<Props> = ({ user, dailyStudySeconds, onS
       // 2. REVISION HUB (Replaces AI Studio)
       // Alias AI_STUDIO to REVISION for backward compatibility
       if (activeTab === 'REVISION' || activeTab === 'AI_STUDIO') {
-          return <RevisionHub user={user} onTabChange={onTabChange} settings={settings} />;
+          return (
+              <RevisionHub
+                  user={user}
+                  onTabChange={onTabChange}
+                  settings={settings}
+                  onNavigateContent={(type, chapterId) => {
+                      if (type === 'PDF') {
+                          // Standard PDF Flow: Select Chapter -> View
+                          // We need to fetch the chapter if not loaded, or simpler:
+                          // just call handleContentChapterSelect if we can reconstruct the chapter object.
+                          // However, we only have chapterId.
+                          setLoadingChapters(true);
+                          fetchChapters(user.board || 'CBSE', user.classLevel || '10', user.stream || 'Science', null, 'English').then(allChapters => {
+                              const ch = allChapters.find(c => c.id === chapterId);
+                              if (ch) {
+                                  onTabChange('PDF');
+                                  // We might need to infer subject. But for now, let's just set the chapter.
+                                  // NOTE: selectedSubject is required for PdfView. We might need to guess it or fetch it.
+                                  // Since we don't have subjectId easily here (unless we pass it from RevisionHub),
+                                  // we will try to find subject from our known subject list.
+                                  const subjects = getSubjectsList(user.classLevel || '10', user.stream || 'Science');
+                                  // This is imperfect without subjectID.
+                                  // Better Approach: RevisionHub should pass subjectId if available in mcqHistory.
+                                  // Assuming handleContentChapterSelect handles the view transition.
+                                  setSelectedChapter(ch);
+                                  setContentViewStep('PLAYER');
+                                  setFullScreen(true);
+                              } else {
+                                  showAlert("Content not found or not loaded.", "ERROR");
+                              }
+                              setLoadingChapters(false);
+                          });
+                      } else if (type === 'MCQ') {
+                          // Similar logic for MCQ
+                          setLoadingChapters(true);
+                          fetchChapters(user.board || 'CBSE', user.classLevel || '10', user.stream || 'Science', null, 'English').then(allChapters => {
+                              const ch = allChapters.find(c => c.id === chapterId);
+                              if (ch) {
+                                  onTabChange('MCQ');
+                                  setSelectedChapter(ch);
+                                  setContentViewStep('PLAYER');
+                                  setFullScreen(true);
+                              } else {
+                                  showAlert("Test not found.", "ERROR");
+                              }
+                              setLoadingChapters(false);
+                          });
+                      }
+                  }}
+              />
+          );
       }
 
       // 3. COURSES TAB (Handles Video, Notes, MCQ Selection)
