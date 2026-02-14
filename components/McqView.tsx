@@ -22,10 +22,11 @@ interface Props {
   onBack: () => void;
   onUpdateUser: (user: User) => void;
   settings?: SystemSettings; // New Prop
+  topicFilter?: string; // NEW: Filter by Topic
 }
 
 export const McqView: React.FC<Props> = ({ 
-  chapter, subject, user, board, classLevel, stream, onBack, onUpdateUser, settings
+  chapter, subject, user, board, classLevel, stream, onBack, onUpdateUser, settings, topicFilter
 }) => {
   const [loading, setLoading] = useState(false);
   const [viewMode, setViewMode] = useState<'SELECTION' | 'PRACTICE' | 'TEST'>('SELECTION');
@@ -133,8 +134,18 @@ export const McqView: React.FC<Props> = ({
   };
 
   const triggerMcqStart = (mode: 'PRACTICE' | 'TEST', data: any) => {
-    // 1. Process Questions (Shuffle & Slice based on Tier)
+    // 1. Process Questions (Filter, Shuffle & Slice based on Tier)
     let processedQuestions = [...(data.manualMcqData || [])];
+
+    // TOPIC FILTER
+    if (topicFilter) {
+        processedQuestions = processedQuestions.filter((q: any) => q.topic === topicFilter);
+        if (processedQuestions.length === 0) {
+            setAlertConfig({isOpen: true, title: "No Questions", message: `No questions found for topic: ${topicFilter}`});
+            setLoading(false);
+            return;
+        }
+    }
     
     // Shuffle Questions (Fisher-Yates)
     for (let i = processedQuestions.length - 1; i > 0; i--) {
@@ -297,7 +308,8 @@ export const McqView: React.FC<Props> = ({
           omrData: omrData,
           wrongQuestions: wrongQuestions,
           questionTimes: Object.values(remappedTime),
-          performanceLabel: perfLabel
+          performanceLabel: perfLabel,
+          topic: topicFilter // Save topic if filtered
       };
 
       // 4. Update User Data
@@ -642,7 +654,9 @@ export const McqView: React.FC<Props> = ({
                <ArrowLeft size={20} />
            </button>
            <div className="flex-1">
-               <h3 className="font-bold text-slate-800 leading-tight line-clamp-1">{chapter.title}</h3>
+               <h3 className="font-bold text-slate-800 leading-tight line-clamp-1">
+                   {topicFilter ? `${topicFilter} (Topic)` : chapter.title}
+               </h3>
                <p className="text-xs text-slate-500">{subject.name} • MCQ Center</p>
            </div>
            

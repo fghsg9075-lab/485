@@ -728,6 +728,7 @@ export interface MCQResult {
   
   // OMR DATA
   classLevel?: string;
+  topic?: string; // NEW: If test was specific to a topic
   omrData?: {
       qIndex: number;
       selected: number; // -1 if skipped

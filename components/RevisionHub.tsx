@@ -3,16 +3,16 @@ import { User, StudentTab, SystemSettings } from '../types';
 import { BrainCircuit, Clock, CheckCircle, TrendingUp, AlertTriangle, ArrowRight, Bot, Sparkles, BookOpen, AlertCircle, X } from 'lucide-react';
 import { BannerCarousel } from './BannerCarousel';
 import { generateCustomNotes } from '../services/groq';
-import { saveAiInteraction } from '../firebase';
+import { saveAiInteraction, getChapterData } from '../firebase';
 import { CustomAlert } from './CustomDialogs';
 
-import { FileText, CheckSquare, Calendar, Zap, AlertCircle as AlertIcon } from 'lucide-react';
+import { FileText, CheckSquare, Calendar, Zap, AlertCircle as AlertIcon, ChevronDown, ChevronUp, Loader2 } from 'lucide-react';
 
 interface Props {
     user: User;
     onTabChange: (tab: StudentTab) => void;
     settings?: SystemSettings;
-    onNavigateContent?: (type: 'PDF' | 'MCQ', chapterId: string) => void;
+    onNavigateContent?: (type: 'PDF' | 'MCQ', chapterId: string, topicName?: string) => void;
 }
 
 type TopicStatus = 'WEAK' | 'AVERAGE' | 'STRONG';
@@ -29,6 +29,50 @@ interface TopicItem {
 export const RevisionHub: React.FC<Props> = ({ user, onTabChange, settings, onNavigateContent }) => {
     const [topics, setTopics] = useState<TopicItem[]>([]);
     const [activeFilter, setActiveFilter] = useState<'TODAY' | 'WEAK' | 'AVERAGE' | 'STRONG'>('TODAY');
+
+    // Topic Expansion State
+    const [expandedChapterId, setExpandedChapterId] = useState<string | null>(null);
+    const [chapterSubTopics, setChapterSubTopics] = useState<string[]>([]);
+    const [loadingSubTopics, setLoadingSubTopics] = useState(false);
+
+    const handleExpandChapter = async (topic: TopicItem) => {
+        if (expandedChapterId === topic.id) {
+            setExpandedChapterId(null);
+            return;
+        }
+
+        setExpandedChapterId(topic.id);
+        setLoadingSubTopics(true);
+        setChapterSubTopics([]);
+
+        try {
+             // Construct Key
+             const board = user.board || 'CBSE';
+             const classLevel = user.classLevel || '10';
+             const streamKey = (classLevel === '11' || classLevel === '12') && user.stream ? `-${user.stream}` : '';
+             const subjectName = topic.subjectName || 'Science'; // Fallback
+             const key = `nst_content_${board}_${classLevel}${streamKey}_${subjectName}_${topic.id}`;
+
+             let data = await getChapterData(key);
+             if (!data) {
+                 // Try local storage fallback
+                 const stored = localStorage.getItem(key);
+                 if (stored) data = JSON.parse(stored);
+             }
+
+             if (data && data.topicNotes) {
+                 // Extract Unique Topics
+                 const uniqueTopics = Array.from(new Set(data.topicNotes.map((n: any) => n.topic || 'General')));
+                 setChapterSubTopics(uniqueTopics as string[]);
+             } else {
+                 setChapterSubTopics([]);
+             }
+        } catch (e) {
+            console.error("Failed to load topics", e);
+        } finally {
+            setLoadingSubTopics(false);
+        }
+    };
 
     // AI Modal State
     const [showAiModal, setShowAiModal] = useState(false);
@@ -98,7 +142,8 @@ export const RevisionHub: React.FC<Props> = ({ user, onTabChange, settings, onNa
                     score: percentage,
                     lastAttempt: result.date,
                     status,
-                    nextRevision: nextRev.toISOString()
+                        nextRevision: nextRev.toISOString(),
+                        subjectName: result.subjectName
                 });
             }
         });
@@ -316,6 +361,8 @@ export const RevisionHub: React.FC<Props> = ({ user, onTabChange, settings, onNa
                                 else if (diffHours < 24) dueLabel = 'Due Today';
                                 else dueLabel = `Due: ${due.toLocaleDateString()}`;
 
+                                const isExpanded = expandedChapterId === topic.id;
+
                                 return (
                                     <div key={idx} className="bg-white p-4 rounded-xl border border-slate-100 shadow-sm hover:shadow-md transition-all">
                                         <div className="flex justify-between items-start mb-3">
@@ -336,20 +383,71 @@ export const RevisionHub: React.FC<Props> = ({ user, onTabChange, settings, onNa
                                             </div>
                                         </div>
 
-                                        <div className="grid grid-cols-2 gap-2">
+                                        {/* Main Action Buttons (Chapter Level) */}
+                                        <div className="grid grid-cols-2 gap-2 mb-2">
                                             <button
                                                 onClick={() => onNavigateContent ? onNavigateContent('PDF', topic.id) : null}
                                                 className="bg-blue-50 text-blue-600 py-2 rounded-lg text-xs font-bold hover:bg-blue-600 hover:text-white transition-colors flex items-center justify-center gap-1"
                                             >
-                                                <FileText size={14} /> Notes
+                                                <FileText size={14} /> Chapter Notes
                                             </button>
                                             <button
                                                 onClick={() => onNavigateContent ? onNavigateContent('MCQ', topic.id) : null}
                                                 className="bg-indigo-50 text-indigo-600 py-2 rounded-lg text-xs font-bold hover:bg-indigo-600 hover:text-white transition-colors flex items-center justify-center gap-1"
                                             >
-                                                <CheckSquare size={14} /> Test
+                                                <CheckSquare size={14} /> Chapter Test
                                             </button>
                                         </div>
+
+                                        {/* Expand for Topics */}
+                                        <button
+                                            onClick={() => handleExpandChapter(topic)}
+                                            className="w-full py-1.5 flex items-center justify-center gap-1 text-[10px] font-bold text-slate-400 hover:text-slate-600 hover:bg-slate-50 rounded-lg transition-all"
+                                        >
+                                            {isExpanded ? (
+                                                <>Collapse Topics <ChevronUp size={12} /></>
+                                            ) : (
+                                                <>View Topics breakdown <ChevronDown size={12} /></>
+                                            )}
+                                        </button>
+
+                                        {/* Sub Topics List */}
+                                        {isExpanded && (
+                                            <div className="mt-2 pl-2 border-l-2 border-slate-100 space-y-2 animate-in fade-in slide-in-from-top-2">
+                                                {loadingSubTopics ? (
+                                                    <div className="flex items-center justify-center py-4 text-slate-400 gap-2">
+                                                        <Loader2 size={16} className="animate-spin" />
+                                                        <span className="text-xs">Loading topics...</span>
+                                                    </div>
+                                                ) : chapterSubTopics.length > 0 ? (
+                                                    chapterSubTopics.map((subTopic, subIdx) => (
+                                                        <div key={subIdx} className="bg-slate-50 p-2 rounded-lg border border-slate-100 flex justify-between items-center group hover:bg-white hover:shadow-sm transition-all">
+                                                            <span className="text-xs font-bold text-slate-700 truncate flex-1">{subTopic}</span>
+                                                            <div className="flex items-center gap-1">
+                                                                <button
+                                                                    onClick={() => onNavigateContent ? onNavigateContent('PDF', topic.id, subTopic) : null}
+                                                                    className="p-1.5 text-blue-600 bg-white rounded-md shadow-sm hover:bg-blue-600 hover:text-white transition-colors"
+                                                                    title="Read Notes"
+                                                                >
+                                                                    <FileText size={12} />
+                                                                </button>
+                                                                <button
+                                                                    onClick={() => onNavigateContent ? onNavigateContent('MCQ', topic.id, subTopic) : null}
+                                                                    className="p-1.5 text-indigo-600 bg-white rounded-md shadow-sm hover:bg-indigo-600 hover:text-white transition-colors"
+                                                                    title="Take Test"
+                                                                >
+                                                                    <CheckSquare size={12} />
+                                                                </button>
+                                                            </div>
+                                                        </div>
+                                                    ))
+                                                ) : (
+                                                    <div className="text-center py-2 text-xs text-slate-400 italic">
+                                                        No sub-topics found for this chapter.
+                                                    </div>
+                                                )}
+                                            </div>
+                                        )}
                                     </div>
                                 );
                             })}
