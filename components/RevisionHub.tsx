@@ -24,6 +24,7 @@ interface TopicItem {
     lastAttempt: string;
     status: TopicStatus;
     nextRevision: string; // ISO Date
+    subjectName?: string;
 }
 
 export const RevisionHub: React.FC<Props> = ({ user, onTabChange, settings, onNavigateContent }) => {
@@ -125,7 +126,7 @@ export const RevisionHub: React.FC<Props> = ({ user, onTabChange, settings, onNa
 
             if (percentage < 50) {
                 status = 'WEAK';
-                daysToAdd = 2;
+                daysToAdd = 0; // Immediate review needed
             } else if (percentage < 80) {
                 status = 'AVERAGE';
                 daysToAdd = 3;
@@ -150,7 +151,7 @@ export const RevisionHub: React.FC<Props> = ({ user, onTabChange, settings, onNa
                 lastAttempt: result.date,
                 status,
                 nextRevision: nextRev.toISOString(),
-                subjectName: result.subjectName
+                    subjectName: result.subjectName || 'General'
             });
         });
 
@@ -368,7 +369,7 @@ export const RevisionHub: React.FC<Props> = ({ user, onTabChange, settings, onNa
                     let displayedTopics = topics;
                     if (activeFilter === 'TODAY') {
                         const now = new Date();
-                        displayedTopics = topics.filter(t => new Date(t.nextRevision) <= now || t.status === 'WEAK');
+                        displayedTopics = topics.filter(t => new Date(t.nextRevision) <= now);
                     } else {
                         displayedTopics = topics.filter(t => t.status === activeFilter);
                     }
@@ -454,15 +455,18 @@ export const RevisionHub: React.FC<Props> = ({ user, onTabChange, settings, onNa
                                         <div className="mb-2">
                                             {isDue ? (
                                                 <button
-                                                    onClick={() => onNavigateContent ? onNavigateContent('PDF', topic.id, undefined, topic.subjectName) : null}
+                                                    onClick={() => onNavigateContent ? onNavigateContent('PDF', topic.id, undefined, topic.subjectName || 'General') : null}
                                                     className="w-full bg-blue-600 text-white py-3 rounded-lg text-xs font-bold hover:bg-blue-700 shadow-lg shadow-blue-200 transition-all flex items-center justify-center gap-2 active:scale-95"
                                                 >
                                                     <FileText size={16} /> Read Chapter Notes
                                                 </button>
                                             ) : (
-                                                <div className="w-full bg-slate-100 text-slate-400 py-3 rounded-lg text-xs font-bold flex items-center justify-center gap-2 cursor-not-allowed border border-slate-200">
+                                                <button
+                                                    onClick={() => showAlert(`This topic is scheduled for Spaced Repetition. It will unlock in ${diffDays} days to maximize retention.`, "INFO", "Smart Lock Active")}
+                                                    className="w-full bg-slate-50 text-slate-400 py-3 rounded-lg text-xs font-bold flex items-center justify-center gap-2 border border-dashed border-slate-300 hover:bg-slate-100 transition-colors"
+                                                >
                                                     <Clock size={16} /> Available in {diffDays} Days
-                                                </div>
+                                                </button>
                                             )}
                                         </div>
 
@@ -492,11 +496,17 @@ export const RevisionHub: React.FC<Props> = ({ user, onTabChange, settings, onNa
                                                             <span className="text-xs font-bold text-slate-700 truncate flex-1">{subTopic}</span>
                                                             <div className="flex items-center gap-1">
                                                                 <button
-                                                                    onClick={() => onNavigateContent ? onNavigateContent('PDF', topic.id, subTopic, topic.subjectName) : null}
-                                                                    className="p-1.5 text-blue-600 bg-white rounded-md shadow-sm hover:bg-blue-600 hover:text-white transition-colors flex items-center gap-1 px-2"
-                                                                    title="Read Notes"
+                                                                    onClick={() => {
+                                                                        if (isDue) {
+                                                                            onNavigateContent ? onNavigateContent('PDF', topic.id, subTopic, topic.subjectName || 'General') : null;
+                                                                        } else {
+                                                                            showAlert(`Sub-topic notes are also locked until ${diffDays} days for optimal learning.`, "INFO", "Topic Locked");
+                                                                        }
+                                                                    }}
+                                                                    className={`p-1.5 rounded-md shadow-sm transition-colors flex items-center gap-1 px-2 ${isDue ? 'text-blue-600 bg-white hover:bg-blue-600 hover:text-white' : 'text-slate-400 bg-slate-100 cursor-not-allowed'}`}
+                                                                    title={isDue ? "Read Notes" : "Locked"}
                                                                 >
-                                                                    <FileText size={12} /> Read
+                                                                    {isDue ? <FileText size={12} /> : <Clock size={12} />} {isDue ? 'Read' : 'Wait'}
                                                                 </button>
                                                             </div>
                                                         </div>
