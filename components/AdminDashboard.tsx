@@ -8399,6 +8399,102 @@ Capital of India?       Mumbai  Delhi   Kolkata Chennai 2       Delhi is the cap
                                               placeholder="HTML Content for Note..."
                                               className="w-full h-24 p-2 border border-slate-200 rounded text-xs font-mono text-slate-600 bg-white ml-8"
                                           />
+
+                                          {/* LINKED MCQS MANAGER */}
+                                          <div className="ml-8 mt-2 p-3 bg-white border border-dashed border-cyan-300 rounded-lg">
+                                              <div className="flex justify-between items-center mb-2">
+                                                  <h5 className="text-[10px] font-bold text-cyan-700 uppercase flex items-center gap-1">
+                                                      <CheckCircle size={12} /> Linked MCQs ({editingMcqs.filter(q => q.topic && q.topic.toLowerCase() === note.topic.toLowerCase()).length})
+                                                  </h5>
+                                                  <button
+                                                      onClick={() => {
+                                                          const newQ: MCQItem = {
+                                                              question: 'New Question',
+                                                              options: ['A', 'B', 'C', 'D'],
+                                                              correctAnswer: 0,
+                                                              explanation: '',
+                                                              topic: note.topic // Auto-link
+                                                          };
+                                                          setEditingMcqs([...editingMcqs, newQ]);
+                                                      }}
+                                                      className="text-[9px] bg-cyan-100 text-cyan-700 px-2 py-1 rounded font-bold hover:bg-cyan-200"
+                                                  >
+                                                      + Add MCQ
+                                                  </button>
+                                              </div>
+
+                                              {/* LIST LINKED MCQS */}
+                                              <div className="space-y-2">
+                                                  {editingMcqs.map((q, qIdx) => {
+                                                      // Only show matching topics
+                                                      if (!q.topic || q.topic.toLowerCase() !== note.topic.toLowerCase()) return null;
+
+                                                      return (
+                                                          <div key={qIdx} className="p-2 border border-slate-100 rounded bg-slate-50 relative group">
+                                                              <div className="flex gap-2 mb-1">
+                                                                  <input
+                                                                      type="text"
+                                                                      value={q.question}
+                                                                      onChange={e => {
+                                                                          const updated = [...editingMcqs];
+                                                                          updated[qIdx].question = e.target.value;
+                                                                          setEditingMcqs(updated);
+                                                                      }}
+                                                                      className="flex-1 p-1 text-xs border rounded font-bold"
+                                                                      placeholder="Question"
+                                                                  />
+                                                                  <button
+                                                                      onClick={() => {
+                                                                          const updated = editingMcqs.filter((_, i) => i !== qIdx);
+                                                                          setEditingMcqs(updated);
+                                                                      }}
+                                                                      className="text-red-400 hover:text-red-600"
+                                                                  >
+                                                                      <Trash2 size={12} />
+                                                                  </button>
+                                                              </div>
+
+                                                              <div className="grid grid-cols-2 gap-1 mb-1">
+                                                                  {q.options.map((opt, oIdx) => (
+                                                                      <div key={oIdx} className="flex items-center gap-1">
+                                                                          <input
+                                                                              type="radio"
+                                                                              checked={q.correctAnswer === oIdx}
+                                                                              onChange={() => {
+                                                                                  const updated = [...editingMcqs];
+                                                                                  updated[qIdx].correctAnswer = oIdx;
+                                                                                  setEditingMcqs(updated);
+                                                                              }}
+                                                                              className="w-3 h-3 accent-green-600"
+                                                                          />
+                                                                          <input
+                                                                              type="text"
+                                                                              value={opt}
+                                                                              onChange={e => {
+                                                                                  const updated = [...editingMcqs];
+                                                                                  updated[qIdx].options[oIdx] = e.target.value;
+                                                                                  setEditingMcqs(updated);
+                                                                              }}
+                                                                              className="flex-1 p-1 text-[10px] border rounded"
+                                                                          />
+                                                                      </div>
+                                                                  ))}
+                                                              </div>
+                                                              <textarea
+                                                                  value={q.explanation || ''}
+                                                                  onChange={e => {
+                                                                      const updated = [...editingMcqs];
+                                                                      updated[qIdx].explanation = e.target.value;
+                                                                      setEditingMcqs(updated);
+                                                                  }}
+                                                                  placeholder="Explanation..."
+                                                                  className="w-full p-1 text-[10px] border rounded bg-white h-8 resize-none"
+                                                              />
+                                                          </div>
+                                                      );
+                                                  })}
+                                              </div>
+                                          </div>
                                       </div>
                                   ))}
                               </div>
