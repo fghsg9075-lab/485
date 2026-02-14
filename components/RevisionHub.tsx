@@ -1,12 +1,10 @@
 import React, { useState, useEffect } from 'react';
 import { User, StudentTab, SystemSettings } from '../types';
-import { BrainCircuit, Clock, CheckCircle, TrendingUp, AlertTriangle, ArrowRight, Bot, Sparkles, BookOpen, AlertCircle, X } from 'lucide-react';
+import { BrainCircuit, Clock, CheckCircle, TrendingUp, AlertTriangle, ArrowRight, Bot, Sparkles, BookOpen, AlertCircle, X, FileText, CheckSquare, Calendar, Zap, AlertCircle as AlertIcon, ChevronDown, ChevronUp, Loader2 } from 'lucide-react';
 import { BannerCarousel } from './BannerCarousel';
 import { generateCustomNotes } from '../services/groq';
 import { saveAiInteraction, getChapterData } from '../firebase';
 import { CustomAlert } from './CustomDialogs';
-
-import { FileText, CheckSquare, Calendar, Zap, AlertCircle as AlertIcon, ChevronDown, ChevronUp, Loader2 } from 'lucide-react';
 
 interface Props {
     user: User;
@@ -18,63 +16,21 @@ interface Props {
 type TopicStatus = 'WEAK' | 'AVERAGE' | 'STRONG';
 
 interface TopicItem {
-    id: string;
-    name: string;
-    score: number;
+    id: string; // Unique ID for list rendering (e.g. chapterId_subTopic)
+    chapterId: string;
+    chapterName: string; // Name of the parent chapter
+    name: string; // Sub-topic name (or Chapter name if no sub-topics)
+    score: number; // Inherited or Specific Score
     lastAttempt: string;
     status: TopicStatus;
     nextRevision: string; // ISO Date
-    ultraAnalysisReport?: string;
     subjectName?: string;
+    isSubTopic: boolean;
 }
 
 export const RevisionHub: React.FC<Props> = ({ user, onTabChange, settings, onNavigateContent }) => {
     const [topics, setTopics] = useState<TopicItem[]>([]);
     const [activeFilter, setActiveFilter] = useState<'TODAY' | 'WEAK' | 'AVERAGE' | 'STRONG'>('TODAY');
-
-    // Topic Expansion State
-    const [expandedChapterId, setExpandedChapterId] = useState<string | null>(null);
-    const [chapterSubTopics, setChapterSubTopics] = useState<string[]>([]);
-    const [loadingSubTopics, setLoadingSubTopics] = useState(false);
-
-    const handleExpandChapter = async (topic: TopicItem) => {
-        if (expandedChapterId === topic.id) {
-            setExpandedChapterId(null);
-            return;
-        }
-
-        setExpandedChapterId(topic.id);
-        setLoadingSubTopics(true);
-        setChapterSubTopics([]);
-
-        try {
-             // Construct Key
-             const board = user.board || 'CBSE';
-             const classLevel = user.classLevel || '10';
-             const streamKey = (classLevel === '11' || classLevel === '12') && user.stream ? `-${user.stream}` : '';
-             const subjectName = topic.subjectName || 'Science'; // Fallback
-             const key = `nst_content_${board}_${classLevel}${streamKey}_${subjectName}_${topic.id}`;
-
-             let data = await getChapterData(key);
-             if (!data) {
-                 // Try local storage fallback
-                 const stored = localStorage.getItem(key);
-                 if (stored) data = JSON.parse(stored);
-             }
-
-             if (data && data.topicNotes) {
-                 // Extract Unique Topics
-                 const uniqueTopics = Array.from(new Set(data.topicNotes.map((n: any) => n.topic || 'General')));
-                 setChapterSubTopics(uniqueTopics as string[]);
-             } else {
-                 setChapterSubTopics([]);
-             }
-        } catch (e) {
-            console.error("Failed to load topics", e);
-        } finally {
-            setLoadingSubTopics(false);
-        }
-    };
 
     // AI Modal State
     const [showAiModal, setShowAiModal] = useState(false);
@@ -89,72 +45,99 @@ export const RevisionHub: React.FC<Props> = ({ user, onTabChange, settings, onNa
     };
 
     useEffect(() => {
-        // Logic to process user.mcqHistory into Topics
+        // Logic to process user.mcqHistory into Sub-Topic Centric Items
         const history = user.mcqHistory || [];
         const topicMap = new Map<string, TopicItem>();
 
-        // Sort history chronologically to calculate streaks correctly
+        // Sort history chronologically (oldest first) so newer attempts overwrite older ones in the Map
         const sortedHistory = [...history].sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime());
-        const tempTracker = new Map<string, { streak: number }>();
 
         sortedHistory.forEach(result => {
-            const topicName = result.chapterTitle || 'Unknown Topic';
-            const percentage = (result.score / result.totalQuestions) * 100;
             const attemptDate = new Date(result.date);
+            const chapterTitle = result.chapterTitle || 'Unknown Chapter';
 
-            // Calculate Streak
-            let currentStreak = 0;
-            if (tempTracker.has(topicName)) {
-                currentStreak = tempTracker.get(topicName)!.streak;
-            }
+            // 1. Try to Parse Ultra Analysis for Sub-Topics
+            let hasSubTopics = false;
+            if (result.ultraAnalysisReport) {
+                try {
+                    const parsed = JSON.parse(result.ultraAnalysisReport);
+                    if (parsed.topics && Array.isArray(parsed.topics)) {
+                        hasSubTopics = true;
+                        parsed.topics.forEach((t: any) => {
+                            // Extract Status and Logic
+                            let status: TopicStatus = 'AVERAGE';
+                            let daysToAdd = 3;
 
-            if (percentage >= 80) {
-                currentStreak += 1;
-            } else {
-                currentStreak = 0; // Reset on low score
-            }
+                            if (t.status === 'WEAK') {
+                                status = 'WEAK';
+                                daysToAdd = 1; // User Request: Weak = 1 Day
+                            } else if (t.status === 'STRONG') {
+                                status = 'STRONG';
+                                daysToAdd = 7; // User Request: Strong = 7 Days
+                            } else {
+                                status = 'AVERAGE';
+                                daysToAdd = 3; // User Request: Average = 3 Days
+                            }
 
-            tempTracker.set(topicName, { streak: currentStreak });
+                            const nextRev = new Date(attemptDate);
+                            nextRev.setDate(nextRev.getDate() + daysToAdd);
 
-            // Determine Status & Revision Deadline
-            // < 50%      -> 2 days
-            // 50–80%     -> 3 days
-            // > 80%      -> 7 days
-            // 2× >80%    -> 30 days
+                            const uniqueId = `${result.chapterId}_${t.name.trim()}`;
 
-            let status: TopicStatus = 'AVERAGE';
-            let daysToAdd = 3;
-
-            if (percentage < 50) {
-                status = 'WEAK';
-                daysToAdd = 2;
-            } else if (percentage < 80) {
-                status = 'AVERAGE';
-                daysToAdd = 3;
-            } else {
-                if (currentStreak >= 2) {
-                    status = 'STRONG';
-                    daysToAdd = 30; // Mastered
-                } else {
-                    status = 'STRONG';
-                    daysToAdd = 7;
+                            topicMap.set(uniqueId, {
+                                id: uniqueId,
+                                chapterId: result.chapterId,
+                                chapterName: chapterTitle,
+                                name: t.name, // Sub-topic Name
+                                score: result.score, // Chapter Score (Approximate for sub-topic unless we have granular data)
+                                lastAttempt: result.date,
+                                status,
+                                nextRevision: nextRev.toISOString(),
+                                subjectName: result.subjectName,
+                                isSubTopic: true
+                            });
+                        });
+                    }
+                } catch (e) {
+                    // Fallback if JSON parse fails
                 }
             }
 
-            const nextRev = new Date(attemptDate);
-            nextRev.setDate(nextRev.getDate() + daysToAdd);
+            // 2. Fallback: If no sub-topics found, create a generic Chapter Item
+            if (!hasSubTopics) {
+                const percentage = (result.score / result.totalQuestions) * 100;
 
-            // Always update to the latest attempt's schedule
-            topicMap.set(topicName, {
-                id: result.chapterId,
-                name: topicName,
-                score: percentage,
-                lastAttempt: result.date,
-                status,
-                nextRevision: nextRev.toISOString(),
-                subjectName: result.subjectName,
-                ultraAnalysisReport: result.ultraAnalysisReport
-            });
+                let status: TopicStatus = 'AVERAGE';
+                let daysToAdd = 3;
+
+                if (percentage < 50) {
+                    status = 'WEAK';
+                    daysToAdd = 1;
+                } else if (percentage >= 80) {
+                    status = 'STRONG';
+                    daysToAdd = 7;
+                } else {
+                    status = 'AVERAGE';
+                    daysToAdd = 3;
+                }
+
+                const nextRev = new Date(attemptDate);
+                nextRev.setDate(nextRev.getDate() + daysToAdd);
+
+                // Use chapterId as key so later attempts overwrite earlier ones
+                topicMap.set(result.chapterId, {
+                    id: result.chapterId,
+                    chapterId: result.chapterId,
+                    chapterName: chapterTitle,
+                    name: chapterTitle, // Display Chapter Name
+                    score: percentage,
+                    lastAttempt: result.date,
+                    status,
+                    nextRevision: nextRev.toISOString(),
+                    subjectName: result.subjectName,
+                    isSubTopic: false
+                });
+            }
         });
 
         setTopics(Array.from(topicMap.values()).sort((a, b) => new Date(a.nextRevision).getTime() - new Date(b.nextRevision).getTime()));
@@ -220,8 +203,6 @@ export const RevisionHub: React.FC<Props> = ({ user, onTabChange, settings, onNa
         }
     };
 
-    // const filteredTopics = filter === 'ALL' ? topics : topics.filter(t => t.status === filter); // Removed unused variable
-
     return (
         <div className="space-y-6 pb-24 p-4 animate-in fade-in">
             <div className="flex items-center justify-between mb-2">
@@ -233,7 +214,7 @@ export const RevisionHub: React.FC<Props> = ({ user, onTabChange, settings, onNa
                 </div>
             </div>
 
-            {/* BANNERS (Moved from AI Studio) */}
+            {/* BANNERS */}
             <div className="h-40 rounded-2xl overflow-hidden shadow-lg relative border-2 border-slate-900 mb-6">
                 <BannerCarousel
                     onBannerClick={(link) => {
@@ -439,21 +420,6 @@ export const RevisionHub: React.FC<Props> = ({ user, onTabChange, settings, onNa
                                     dueColor = 'text-blue-500 font-bold';
                                 }
 
-                                const isExpanded = expandedChapterId === topic.id;
-
-                                // Parse Ultra Analysis for Topic Breakdown
-                                let subTopicsStats: any[] = [];
-                                if (topic.ultraAnalysisReport) {
-                                    try {
-                                        const parsed = JSON.parse(topic.ultraAnalysisReport);
-                                        if (parsed.topics && Array.isArray(parsed.topics)) {
-                                            subTopicsStats = parsed.topics;
-                                        }
-                                    } catch (e) {
-                                        // Ignore parse error
-                                    }
-                                }
-
                                 return (
                                     <div key={idx} className="bg-white p-4 rounded-xl border border-slate-100 shadow-sm hover:shadow-md transition-all relative overflow-hidden">
                                         {/* Status Stripe */}
@@ -461,12 +427,14 @@ export const RevisionHub: React.FC<Props> = ({ user, onTabChange, settings, onNa
 
                                         <div className="flex justify-between items-start mb-4 pl-3">
                                             <div className="overflow-hidden flex-1 pr-2">
-                                                <h4 className="font-bold text-slate-800 text-sm truncate">{topic.name}</h4>
+                                                {/* Parent Chapter Badge (If this is a subtopic) */}
+                                                {topic.isSubTopic && (
+                                                    <span className="text-[9px] font-bold text-slate-400 uppercase tracking-wider mb-1 block">
+                                                        {topic.chapterName}
+                                                    </span>
+                                                )}
 
-                                                {/* OMR Style Topic Breakdown Bar */}
-                                                <div className="mt-2 w-full max-w-[150px] h-2 bg-slate-100 rounded-full overflow-hidden flex">
-                                                    <div style={{ width: `${topic.score}%` }} className={`h-full ${topic.score >= 80 ? 'bg-green-500' : topic.score < 50 ? 'bg-red-500' : 'bg-orange-500'}`}></div>
-                                                </div>
+                                                <h4 className="font-bold text-slate-800 text-sm truncate">{topic.name}</h4>
 
                                                 <div className="flex items-center gap-2 mt-2 flex-wrap">
                                                     <span className={`text-[10px] font-black px-2 py-0.5 rounded-md flex items-center gap-1 border ${getStatusColor(topic.status)}`}>
@@ -479,104 +447,33 @@ export const RevisionHub: React.FC<Props> = ({ user, onTabChange, settings, onNa
                                             </div>
 
                                             {/* OMR Style Score Badge */}
-                                            <div className="flex flex-col items-center justify-center bg-slate-50 border border-slate-200 rounded-lg p-2 min-w-[50px]">
-                                                <div className={`text-lg font-black ${topic.score >= 80 ? 'text-green-600' : topic.score < 50 ? 'text-red-600' : 'text-orange-600'}`}>
-                                                    {Math.round(topic.score)}%
+                                            {/* We only show score if it's not sub-topic or if we want to show parent score */}
+                                            {!topic.isSubTopic && (
+                                                <div className="flex flex-col items-center justify-center bg-slate-50 border border-slate-200 rounded-lg p-2 min-w-[50px]">
+                                                    <div className={`text-lg font-black ${topic.score >= 80 ? 'text-green-600' : topic.score < 50 ? 'text-red-600' : 'text-orange-600'}`}>
+                                                        {Math.round(topic.score)}%
+                                                    </div>
+                                                    <div className="text-[9px] text-slate-400 font-bold uppercase tracking-wider">OMR</div>
                                                 </div>
-                                                <div className="text-[9px] text-slate-400 font-bold uppercase tracking-wider">OMR</div>
-                                            </div>
-                                        </div>
-
-                                        {/* SUB-TOPIC BREAKDOWN (OMR STYLE) */}
-                                        {subTopicsStats.length > 0 && (
-                                            <div className="mt-3 mb-4 bg-slate-50 p-3 rounded-lg border border-slate-100">
-                                                <h5 className="text-[10px] font-black uppercase text-slate-500 mb-2">Topic Breakdown</h5>
-                                                <div className="space-y-2">
-                                                    {subTopicsStats.map((t: any, i: number) => {
-                                                        let color = 'bg-blue-500';
-                                                        let width = '60%';
-
-                                                        if (t.status === 'WEAK') { color = 'bg-red-500'; width = '30%'; }
-                                                        else if (t.status === 'STRONG') { color = 'bg-green-500'; width = '90%'; }
-                                                        else { color = 'bg-orange-500'; width = '60%'; }
-
-                                                        return (
-                                                            <div key={i}>
-                                                                <div className="flex justify-between items-center text-[10px] mb-1">
-                                                                    <span className="font-bold text-slate-700 truncate max-w-[70%]">{t.name}</span>
-                                                                    <span className={`font-bold ${t.status === 'WEAK' ? 'text-red-500' : t.status === 'STRONG' ? 'text-green-600' : 'text-orange-500'}`}>{t.status}</span>
-                                                                </div>
-                                                                <div className="h-1.5 w-full bg-slate-200 rounded-full overflow-hidden">
-                                                                    <div className={`h-full ${color} transition-all duration-500`} style={{width}}></div>
-                                                                </div>
-                                                            </div>
-                                                        )
-                                                    })}
-                                                </div>
-                                            </div>
-                                        )}
-
-                                        {/* Main Action Buttons (Chapter Level) */}
-                                        <div className="mb-2">
-                                            {isDue ? (
-                                                <button
-                                                    onClick={() => onNavigateContent ? onNavigateContent('PDF', topic.id, undefined, topic.subjectName) : null}
-                                                    className="w-full bg-blue-600 text-white py-3 rounded-lg text-xs font-bold hover:bg-blue-700 shadow-lg shadow-blue-200 transition-all flex items-center justify-center gap-2 active:scale-95"
-                                                >
-                                                    <FileText size={16} /> Read Chapter Notes
-                                                </button>
-                                            ) : (
-                                                <button
-                                                    onClick={() => onNavigateContent ? onNavigateContent('PDF', topic.id, undefined, topic.subjectName) : null}
-                                                    className="w-full bg-white text-blue-600 border border-blue-200 py-3 rounded-lg text-xs font-bold hover:bg-blue-50 transition-all flex items-center justify-center gap-2 active:scale-95"
-                                                >
-                                                    <Clock size={16} /> Revise Early ({diffDays} Days Left)
-                                                </button>
                                             )}
                                         </div>
 
-                                        {/* Expand for Topics */}
-                                        <button
-                                            onClick={() => handleExpandChapter(topic)}
-                                            className="w-full py-1.5 flex items-center justify-center gap-1 text-[10px] font-bold text-slate-400 hover:text-slate-600 hover:bg-slate-50 rounded-lg transition-all"
-                                        >
-                                            {isExpanded ? (
-                                                <>Collapse Topics <ChevronUp size={12} /></>
-                                            ) : (
-                                                <>View Sub-Topics <ChevronDown size={12} /></>
-                                            )}
-                                        </button>
+                                        {/* Main Action Buttons */}
+                                        <div className="grid grid-cols-2 gap-2 mt-2">
+                                            <button
+                                                onClick={() => onNavigateContent ? onNavigateContent('PDF', topic.chapterId, topic.isSubTopic ? topic.name : undefined, topic.subjectName) : null}
+                                                className="w-full bg-blue-600 text-white py-2.5 rounded-lg text-xs font-bold hover:bg-blue-700 shadow-lg shadow-blue-200 transition-all flex items-center justify-center gap-2 active:scale-95"
+                                            >
+                                                <FileText size={16} /> Revise Notes
+                                            </button>
 
-                                        {/* Sub Topics List */}
-                                        {isExpanded && (
-                                            <div className="mt-2 pl-2 border-l-2 border-slate-100 space-y-2 animate-in fade-in slide-in-from-top-2">
-                                                {loadingSubTopics ? (
-                                                    <div className="flex items-center justify-center py-4 text-slate-400 gap-2">
-                                                        <Loader2 size={16} className="animate-spin" />
-                                                        <span className="text-xs">Loading topics...</span>
-                                                    </div>
-                                                ) : chapterSubTopics.length > 0 ? (
-                                                    chapterSubTopics.map((subTopic, subIdx) => (
-                                                        <div key={subIdx} className="bg-slate-50 p-2 rounded-lg border border-slate-100 flex justify-between items-center group hover:bg-white hover:shadow-sm transition-all">
-                                                            <span className="text-xs font-bold text-slate-700 truncate flex-1">{subTopic}</span>
-                                                            <div className="flex items-center gap-1">
-                                                                <button
-                                                                    onClick={() => onNavigateContent ? onNavigateContent('PDF', topic.id, subTopic, topic.subjectName) : null}
-                                                                    className="p-1.5 text-blue-600 bg-white rounded-md shadow-sm hover:bg-blue-600 hover:text-white transition-colors flex items-center gap-1 px-2"
-                                                                    title="Read Notes"
-                                                                >
-                                                                    <FileText size={12} /> Read
-                                                                </button>
-                                                            </div>
-                                                        </div>
-                                                    ))
-                                                ) : (
-                                                    <div className="text-center py-2 text-xs text-slate-400 italic">
-                                                        No sub-topics found for this chapter.
-                                                    </div>
-                                                )}
-                                            </div>
-                                        )}
+                                            <button
+                                                onClick={() => onNavigateContent ? onNavigateContent('MCQ', topic.chapterId, topic.isSubTopic ? topic.name : undefined, topic.subjectName) : null}
+                                                className="w-full bg-white text-slate-700 border border-slate-200 py-2.5 rounded-lg text-xs font-bold hover:bg-slate-50 transition-all flex items-center justify-center gap-2 active:scale-95"
+                                            >
+                                                <CheckSquare size={16} /> Practice MCQ
+                                            </button>
+                                        </div>
                                     </div>
                                 );
                             })}
