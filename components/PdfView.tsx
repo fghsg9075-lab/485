@@ -662,16 +662,21 @@ export const PdfView: React.FC<Props> = ({
                                    <button
                                        key={`free-${idx}`}
                                        onClick={() => handleNoteItemClick(note, false)}
-                                       className="w-full p-4 rounded-xl border border-green-100 bg-white hover:bg-green-50 flex items-center gap-3 transition-all relative group"
+                                       className="w-full p-4 rounded-2xl bg-white border border-slate-100 shadow-sm hover:shadow-md hover:border-green-200 transition-all flex items-center gap-4 group"
                                    >
-                                       <div className="w-10 h-10 rounded-full bg-green-100 text-green-600 flex items-center justify-center font-bold text-xs">
-                                           {idx + 1}
+                                       <div className="w-12 h-12 rounded-2xl bg-gradient-to-br from-green-50 to-emerald-100 flex items-center justify-center text-green-600 shadow-inner">
+                                           <FileText size={20} className="drop-shadow-sm" />
                                        </div>
                                        <div className="flex-1 text-left">
-                                           <h5 className="font-bold text-slate-800 text-sm">{note.title || `Note ${idx + 1}`}</h5>
-                                           <span className="text-[10px] font-bold text-green-600 bg-green-50 px-2 py-0.5 rounded border border-green-200 uppercase">{note.type || 'PDF'}</span>
+                                           <h5 className="font-bold text-slate-800 text-sm group-hover:text-green-700 transition-colors line-clamp-1">{note.title || `Note ${idx + 1}`}</h5>
+                                           <div className="flex items-center gap-2 mt-1">
+                                               <span className="text-[10px] font-black text-green-700 bg-green-100/50 px-2 py-0.5 rounded uppercase tracking-wider">{note.type || 'PDF'}</span>
+                                               <span className="text-[10px] font-medium text-slate-400">Free Access</span>
+                                           </div>
                                        </div>
-                                       <ArrowLeft size={16} className="text-green-400 rotate-180" />
+                                       <div className="w-8 h-8 rounded-full bg-slate-50 flex items-center justify-center group-hover:bg-green-600 group-hover:text-white transition-all">
+                                           <ArrowLeft size={16} className="rotate-180" />
+                                       </div>
                                    </button>
                                ))}
                            </div>
@@ -744,24 +749,28 @@ export const PdfView: React.FC<Props> = ({
                                    <button
                                        key={`prem-${idx}`}
                                        onClick={() => handleNoteItemClick(note, true)}
-                                       className="w-full p-4 rounded-xl border-2 border-yellow-100 bg-white hover:border-yellow-300 flex items-center gap-3 transition-all relative group"
+                                       className="w-full p-1 rounded-2xl bg-gradient-to-r from-yellow-200 via-amber-200 to-yellow-200 shadow-sm hover:shadow-lg transition-all group relative overflow-hidden"
                                    >
-                                       <div className="w-10 h-10 rounded-full bg-yellow-100 text-yellow-600 flex items-center justify-center font-bold text-xs border border-yellow-200">
-                                           {idx + 1}
-                                       </div>
-                                       <div className="flex-1 text-left">
-                                           <h5 className="font-bold text-slate-800 text-sm">{note.title || `Premium Note ${idx + 1}`}</h5>
-                                           <div className="flex gap-2 mt-1">
-                                               <span className="text-[10px] font-bold text-purple-600 bg-purple-50 px-2 py-0.5 rounded border border-purple-200 uppercase">{note.type || 'PDF'}</span>
-                                               <span className="text-[10px] font-bold text-yellow-700 bg-yellow-50 px-2 py-0.5 rounded border border-yellow-200 flex items-center gap-1">
-                                                   <Lock size={8} /> Locked
-                                               </span>
+                                       <div className="absolute inset-0 bg-white/40 group-hover:bg-transparent transition-colors"></div>
+                                       <div className="bg-white rounded-[14px] p-4 flex items-center gap-4 relative z-10 h-full">
+                                           <div className="w-12 h-12 rounded-2xl bg-gradient-to-br from-amber-100 to-yellow-50 flex items-center justify-center text-amber-600 shadow-inner border border-amber-100">
+                                               <Crown size={20} fill="currentColor" className="drop-shadow-sm" />
                                            </div>
-                                       </div>
-                                       <div className="flex flex-col items-end">
-                                            <span className="text-xs font-black text-yellow-600">
-                                                {settings?.defaultPdfCost ?? 5} CR
-                                            </span>
+                                           <div className="flex-1 text-left">
+                                               <h5 className="font-black text-slate-800 text-sm group-hover:text-amber-700 transition-colors line-clamp-1">{note.title || `Premium Note ${idx + 1}`}</h5>
+                                               <div className="flex items-center gap-2 mt-1">
+                                                   <span className="text-[10px] font-black text-purple-600 bg-purple-50 px-2 py-0.5 rounded uppercase tracking-wider border border-purple-100">{note.type || 'PDF'}</span>
+                                                   <span className="text-[10px] font-bold text-amber-600 bg-amber-50 px-2 py-0.5 rounded border border-amber-100 flex items-center gap-1">
+                                                       <Lock size={10} /> Premium
+                                                   </span>
+                                               </div>
+                                           </div>
+                                           <div className="flex flex-col items-end bg-amber-50 px-3 py-1 rounded-lg border border-amber-100">
+                                                <span className="text-xs font-black text-amber-700">
+                                                    {settings?.defaultPdfCost ?? 5} CR
+                                                </span>
+                                                <span className="text-[8px] text-amber-500 font-bold uppercase tracking-wider">Unlock</span>
+                                           </div>
                                        </div>
                                    </button>
                                ))}
@@ -788,14 +797,17 @@ export const PdfView: React.FC<Props> = ({
                                </h4>
                                <div className="space-y-3">
                                    {topics.map((topic, idx) => (
-                                       <div key={idx} className="bg-white rounded-xl border border-orange-100 overflow-hidden shadow-sm">
-                                           <div className="bg-orange-50 px-4 py-3 flex items-center justify-between">
-                                               <h5 className="font-bold text-orange-900 text-sm">{topic}</h5>
-                                               <span className="text-[10px] font-bold text-orange-600 bg-white px-2 py-0.5 rounded-full border border-orange-200">
+                                       <div key={idx} className="bg-white rounded-2xl border border-orange-100/50 shadow-sm overflow-hidden mb-3">
+                                           <div className="bg-gradient-to-r from-orange-50 to-white px-4 py-3 flex items-center justify-between border-b border-orange-50">
+                                               <h5 className="font-black text-orange-900 text-sm flex items-center gap-2">
+                                                   <div className="w-2 h-2 rounded-full bg-orange-500"></div>
+                                                   {topic}
+                                               </h5>
+                                               <span className="text-[10px] font-bold text-orange-600 bg-white px-2 py-0.5 rounded-full border border-orange-100 shadow-sm">
                                                    {grouped[topic].length} Notes
                                                </span>
                                            </div>
-                                           <div className="p-2 space-y-1">
+                                           <div className="p-3 space-y-2">
                                                {grouped[topic].map((note, nIdx) => (
                                                    <button
                                                        key={nIdx}
@@ -814,15 +826,24 @@ export const PdfView: React.FC<Props> = ({
                                                                setAlertConfig({isOpen: true, message: "Empty content."});
                                                            }
                                                        }}
-                                                       className="w-full text-left p-3 rounded-lg hover:bg-slate-50 flex items-center justify-between group transition-colors"
+                                                       className="w-full text-left p-3 rounded-xl bg-slate-50 hover:bg-white hover:shadow-md hover:border-orange-200 border border-transparent transition-all group flex items-center justify-between"
                                                    >
                                                        <div className="flex items-center gap-3">
-                                                           <div className={`w-8 h-8 rounded-full flex items-center justify-center ${note.isPremium ? 'bg-purple-100 text-purple-600' : 'bg-slate-100 text-slate-500'}`}>
-                                                               <FileText size={14} />
+                                                           <div className={`w-10 h-10 rounded-xl flex items-center justify-center shadow-sm ${note.isPremium ? 'bg-purple-100 text-purple-600' : 'bg-white text-slate-500 border border-slate-100'}`}>
+                                                               {note.isPremium ? <Crown size={16} fill="currentColor" /> : <FileText size={16} />}
                                                            </div>
-                                                           <span className="text-sm font-medium text-slate-700 group-hover:text-blue-600 transition-colors line-clamp-1">{note.title || 'Untitled Note'}</span>
+                                                           <div>
+                                                               <span className="text-sm font-bold text-slate-700 group-hover:text-orange-600 transition-colors line-clamp-1 block">{note.title || 'Untitled Note'}</span>
+                                                               <span className="text-[10px] text-slate-400 font-medium">Click to Read</span>
+                                                           </div>
                                                        </div>
-                                                       {note.isPremium && <Lock size={12} className="text-purple-400" />}
+                                                       {note.isPremium ? (
+                                                           <Lock size={14} className="text-purple-400" />
+                                                       ) : (
+                                                           <div className="w-6 h-6 rounded-full bg-white flex items-center justify-center text-slate-300 group-hover:text-green-500 transition-colors">
+                                                               <ArrowLeft size={12} className="rotate-180" />
+                                                           </div>
+                                                       )}
                                                    </button>
                                                ))}
                                            </div>
