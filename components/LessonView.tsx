@@ -9,7 +9,7 @@ import remarkMath from 'remark-math';
 import rehypeKatex from 'rehype-katex';
 import { decodeHtml } from '../utils/htmlDecoder';
 import { storage } from '../utils/storage';
-import { getChapterData } from '../firebase';
+import { getChapterData, saveUserHistory, saveTestResult } from '../firebase';
 import { SpeakButton } from './SpeakButton';
 import { renderMathInHtml } from '../utils/mathUtils';
 import { speakWithHighlight, stopSpeaking } from '../utils/ttsHighlighter';
@@ -614,12 +614,11 @@ export const LessonView: React.FC<Props> = ({
             classLevel,
             userAnswers: mcqState
         };
-        import('../firebase').then(m => {
-            if (user?.id) {
-                m.saveUserHistory(user.id, historyItem);
-                m.saveTestResult(user.id, historyItem);
-            }
-        });
+
+        if (user?.id) {
+            saveUserHistory(user.id, historyItem);
+            saveTestResult(user.id, historyItem);
+        }
     };
 
     const renderAnalysisDashboard = () => {
