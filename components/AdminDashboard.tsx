@@ -1,7 +1,10 @@
 
 import React, { useEffect, useState, useRef } from 'react';
 import { User, ViewState, SystemSettings, Subject, Chapter, MCQItem, RecoveryRequest, ActivityLogEntry, LeaderboardEntry, RecycleBinItem, Stream, Board, ClassLevel, GiftCode, SubscriptionPlan, CreditPackage, SpinReward, HtmlModule, PremiumNoteSlot, ContentInfoConfig, ContentInfoItem, SubscriptionHistoryEntry, UniversalAnalysisLog, ContentType, LessonContent } from '../types';
+ fix-admin-list-ref-and-topic-notes-toggle-6480143259488591248
 import { List, LayoutDashboard, Users, Search, Trash2, Save, X, Eye, EyeOff, Shield, Megaphone, CheckCircle, ListChecks, Database, FileText, Monitor, Sparkles, Banknote, BrainCircuit, AlertOctagon, ArrowLeft, Key, Bell, ShieldCheck, Lock, Globe, Layers, Zap, PenTool, RefreshCw, RotateCcw, Plus, LogOut, Download, Upload, CreditCard, Ticket, Video, Image as ImageIcon, Type, Link, FileJson, Activity, AlertTriangle, Gift, Book, Mail, Edit3, MessageSquare, ShoppingBag, Cloud, Rocket, Code2, Layers as LayersIcon, Wifi, WifiOff, Copy, Crown, Gamepad2, Calendar, BookOpen, Image, HelpCircle, Youtube, Play, Star, Trophy, Palette, Settings, Headphones, Layout, Bot, LayoutDashboard as DashboardIcon } from 'lucide-react';
+        
+import { LayoutDashboard, Users, Search, Trash2, Save, X, Eye, EyeOff, Shield, Megaphone, CheckCircle, ListChecks, Database, FileText, Monitor, Sparkles, Banknote, BrainCircuit, AlertOctagon, ArrowLeft, Key, Bell, ShieldCheck, Lock, Globe, Layers, Zap, PenTool, RefreshCw, RotateCcw, Plus, LogOut, Download, Upload, CreditCard, Ticket, Video, Image as ImageIcon, Type, Link, FileJson, Activity, AlertTriangle, Gift, Book, Mail, Edit3, MessageSquare, ShoppingBag, Cloud, Rocket, Code2, Layers as LayersIcon, Wifi, WifiOff, Copy, Crown, Gamepad2, Calendar, BookOpen, Image, HelpCircle, Youtube, Play, Star, Trophy, Palette, Settings, Headphones, Layout, Bot, LayoutDashboard as DashboardIcon, List } from 'lucide-react main
 import { getSubjectsList, DEFAULT_SUBJECTS, DEFAULT_APP_FEATURES, ALL_APP_FEATURES, STUDENT_APP_FEATURES, DEFAULT_CONTENT_INFO_CONFIG, ADMIN_PERMISSIONS, APP_VERSION } from '../constants';
 import { fetchChapters, fetchLessonContent } from '../services/groq';
 import { runAutoPilot, runCommandMode } from '../services/autoPilot';
@@ -2928,12 +2931,12 @@ const AdminDashboardInner: React.FC<Props> = ({ onNavigate, settings, onUpdateSe
                       </div>
                       <p className="text-xs text-purple-700 mb-4">Hiding a content type removes it from all Courses and Menus.</p>
                       <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
-                          {['VIDEO', 'PDF', 'MCQ', 'AUDIO'].map(type => {
+                          {['VIDEO', 'PDF', 'MCQ', 'AUDIO', 'TOPIC_NOTES'].map(type => {
                               // @ts-ignore
                               const isVisible = localSettings.contentVisibility?.[type] !== false;
                               return (
                                   <div key={type} className="flex flex-col gap-2 bg-white p-3 rounded-xl border border-purple-100 items-center text-center">
-                                      <span className="font-bold text-slate-700 text-xs">{type}</span>
+                                      <span className="font-bold text-slate-700 text-xs">{type === 'TOPIC_NOTES' ? 'Topic Notes (Global)' : type}</span>
                                       <button 
                                          onClick={() => {
                                              const currentVis = localSettings.contentVisibility || {};

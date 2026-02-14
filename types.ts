@@ -401,6 +401,7 @@ export interface SystemSettings {
       PDF?: boolean;
       MCQ?: boolean;
       AUDIO?: boolean;
+      TOPIC_NOTES?: boolean; // NEW: Toggle Topic Notes Visibility
   };
   // EXPLORE PAGE CONFIG
   showMorningInsight?: boolean; // NEW: Toggle Morning Banner
