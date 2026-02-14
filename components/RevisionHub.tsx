@@ -228,7 +228,7 @@ export const RevisionHub: React.FC<Props> = ({ user, onTabChange, settings, onNa
             <div className="h-40 rounded-2xl overflow-hidden shadow-lg relative border-2 border-slate-900 mb-6">
                 <BannerCarousel
                     onBannerClick={(link) => {
-                        if (['STORE', 'CUSTOM_PAGE', 'VIDEO', 'PDF', 'MCQ', 'AUDIO', 'AI_CHAT'].includes(link)) {
+                        if (['STORE', 'CUSTOM_PAGE', 'VIDEO', 'PDF', 'MCQ', 'AUDIO', 'AI_CHAT', 'DEEP_ANALYSIS', 'AI_HISTORY'].includes(link)) {
                             onTabChange(link as any);
                         } else if (link === 'AI_AGENT') {
                             setShowAiModal(true);
@@ -255,6 +255,20 @@ export const RevisionHub: React.FC<Props> = ({ user, onTabChange, settings, onNa
                             title: 'Smart Revision',
                             subtitle: 'Focus on Weak Topics',
                             link: ''
+                        },
+                        {
+                            id: 'deep_analysis',
+                            image: 'https://img.freepik.com/free-vector/data-analysis-concept-illustration_114360-8023.jpg',
+                            title: 'Deep Analysis',
+                            subtitle: 'Unlock Performance Insights',
+                            link: 'DEEP_ANALYSIS'
+                        },
+                        {
+                            id: 'ai_history',
+                            image: 'https://img.freepik.com/free-vector/memory-storage-concept-illustration_114360-1599.jpg',
+                            title: 'AI History',
+                            subtitle: 'Review Learning Journey',
+                            link: 'AI_HISTORY'
                         }
                     ]}
                     interval={4000}
