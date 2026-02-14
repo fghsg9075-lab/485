@@ -112,22 +112,16 @@ export const RevisionHub: React.FC<Props> = ({ user, onTabChange, settings, onNa
             const percentage = (result.score / result.totalQuestions) * 100;
             const attemptDate = new Date(result.date);
 
-            // Determine Status
+            // Determine Status & Revision Deadline
             let status: TopicStatus = 'AVERAGE';
-            if (percentage < 50) status = 'WEAK';
-            else if (percentage >= 80) status = 'STRONG';
+            let daysToAdd = 3;
 
-            // Determine Revision Deadline
-            let daysToAdd = 3; // Average
-            if (status === 'WEAK') daysToAdd = 1;
-            if (status === 'STRONG') {
-                // Check High Score Count
-                const stats = topicStats.get(topicName);
-                if (stats && stats.highScores >= 2) {
-                    daysToAdd = 30; // Shift to 30 days if mastered twice
-                } else {
-                    daysToAdd = 7;
-                }
+            if (percentage < 50) {
+                status = 'WEAK';
+                daysToAdd = 1; // Daily Revision for Weak
+            } else if (percentage >= 80) {
+                status = 'STRONG';
+                daysToAdd = 30; // Monthly Revision for Strong
             }
 
             const nextRev = new Date(attemptDate);
@@ -228,7 +222,7 @@ export const RevisionHub: React.FC<Props> = ({ user, onTabChange, settings, onNa
             <div className="h-40 rounded-2xl overflow-hidden shadow-lg relative border-2 border-slate-900 mb-6">
                 <BannerCarousel
                     onBannerClick={(link) => {
-                        if (['STORE', 'CUSTOM_PAGE', 'VIDEO', 'PDF', 'MCQ', 'AUDIO', 'AI_CHAT'].includes(link)) {
+                        if (['STORE', 'CUSTOM_PAGE', 'VIDEO', 'PDF', 'MCQ', 'AUDIO', 'AI_CHAT', 'DEEP_ANALYSIS', 'AI_HISTORY'].includes(link)) {
                             onTabChange(link as any);
                         } else if (link === 'AI_AGENT') {
                             setShowAiModal(true);
@@ -255,6 +249,20 @@ export const RevisionHub: React.FC<Props> = ({ user, onTabChange, settings, onNa
                             title: 'Smart Revision',
                             subtitle: 'Focus on Weak Topics',
                             link: ''
+                        },
+                        {
+                            id: 'deep_analysis',
+                            image: 'https://img.freepik.com/free-vector/data-analysis-concept-illustration_114360-8023.jpg',
+                            title: 'Deep Analysis',
+                            subtitle: 'Unlock Performance Insights',
+                            link: 'DEEP_ANALYSIS'
+                        },
+                        {
+                            id: 'ai_history',
+                            image: 'https://img.freepik.com/free-vector/memory-storage-concept-illustration_114360-1599.jpg',
+                            title: 'AI History',
+                            subtitle: 'Review Learning Journey',
+                            link: 'AI_HISTORY'
                         }
                     ]}
                     interval={4000}
@@ -345,6 +353,15 @@ export const RevisionHub: React.FC<Props> = ({ user, onTabChange, settings, onNa
                                 <BookOpen className="mx-auto text-slate-300 mb-2" size={40} />
                                 <p className="text-slate-400 font-bold text-sm">No topics found in this category.</p>
                                 <p className="text-xs text-slate-400 mt-1">Keep studying to populate your plan!</p>
+
+                                {activeFilter === 'TODAY' && (
+                                    <button
+                                        onClick={() => onTabChange('COURSES')}
+                                        className="mt-4 bg-indigo-600 text-white px-6 py-2 rounded-xl text-sm font-bold shadow-lg hover:scale-105 transition-transform"
+                                    >
+                                        Start Learning
+                                    </button>
+                                )}
                             </div>
                         );
                     }
@@ -354,32 +371,49 @@ export const RevisionHub: React.FC<Props> = ({ user, onTabChange, settings, onNa
                             {displayedTopics.map((topic, idx) => {
                                 const due = new Date(topic.nextRevision);
                                 const now = new Date();
-                                const diffHours = (due.getTime() - now.getTime()) / (1000 * 60 * 60);
+                                const diffTime = due.getTime() - now.getTime();
+                                const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
 
                                 let dueLabel = '';
-                                if (diffHours < 0) dueLabel = 'Overdue';
-                                else if (diffHours < 24) dueLabel = 'Due Today';
-                                else dueLabel = `Due: ${due.toLocaleDateString()}`;
+                                let dueColor = 'text-slate-400';
+
+                                if (diffDays <= 0) {
+                                    dueLabel = 'Due Today';
+                                    dueColor = 'text-red-600 font-black animate-pulse';
+                                } else if (diffDays === 1) {
+                                    dueLabel = 'Tomorrow';
+                                    dueColor = 'text-orange-500 font-bold';
+                                } else {
+                                    dueLabel = `${diffDays} Days Left`;
+                                    dueColor = 'text-blue-500 font-bold';
+                                }
 
                                 const isExpanded = expandedChapterId === topic.id;
 
                                 return (
-                                    <div key={idx} className="bg-white p-4 rounded-xl border border-slate-100 shadow-sm hover:shadow-md transition-all">
-                                        <div className="flex justify-between items-start mb-3">
-                                            <div className="overflow-hidden">
+                                    <div key={idx} className="bg-white p-4 rounded-xl border border-slate-100 shadow-sm hover:shadow-md transition-all relative overflow-hidden">
+                                        {/* Status Stripe */}
+                                        <div className={`absolute left-0 top-0 bottom-0 w-1 ${topic.status === 'WEAK' ? 'bg-red-500' : topic.status === 'STRONG' ? 'bg-green-500' : 'bg-orange-500'}`}></div>
+
+                                        <div className="flex justify-between items-start mb-4 pl-3">
+                                            <div className="overflow-hidden flex-1 pr-2">
                                                 <h4 className="font-bold text-slate-800 text-sm truncate">{topic.name}</h4>
-                                                <div className="flex items-center gap-2 mt-1">
-                                                    <span className={`text-[10px] font-black px-2 py-0.5 rounded flex items-center gap-1 border ${getStatusColor(topic.status)}`}>
+                                                <div className="flex items-center gap-2 mt-1.5 flex-wrap">
+                                                    <span className={`text-[10px] font-black px-2 py-0.5 rounded-md flex items-center gap-1 border ${getStatusColor(topic.status)}`}>
                                                         {getStatusIcon(topic.status)} {topic.status}
                                                     </span>
-                                                    <span className={`text-[10px] font-bold ${diffHours < 24 ? 'text-red-500 animate-pulse' : 'text-slate-400'}`}>
-                                                        <Clock size={10} className="inline mr-1" /> {dueLabel}
+                                                    <span className={`text-[10px] flex items-center gap-1 bg-slate-50 px-2 py-0.5 rounded-md border border-slate-200 ${dueColor}`}>
+                                                        <Clock size={10} className="inline" /> {dueLabel}
                                                     </span>
                                                 </div>
                                             </div>
-                                            <div className="text-right">
-                                                <div className="text-xs font-black text-slate-700">{Math.round(topic.score)}%</div>
-                                                <div className="text-[9px] text-slate-400 font-medium">Score</div>
+
+                                            {/* OMR Style Score Badge */}
+                                            <div className="flex flex-col items-center justify-center bg-slate-50 border border-slate-200 rounded-lg p-2 min-w-[50px]">
+                                                <div className={`text-lg font-black ${topic.score >= 80 ? 'text-green-600' : topic.score < 50 ? 'text-red-600' : 'text-orange-600'}`}>
+                                                    {Math.round(topic.score)}%
+                                                </div>
+                                                <div className="text-[9px] text-slate-400 font-bold uppercase tracking-wider">Score</div>
                                             </div>
                                         </div>
 
