@@ -2927,12 +2927,12 @@ const AdminDashboardInner: React.FC<Props> = ({ onNavigate, settings, onUpdateSe
                       </div>
                       <p className="text-xs text-purple-700 mb-4">Hiding a content type removes it from all Courses and Menus.</p>
                       <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
-                          {['VIDEO', 'PDF', 'MCQ', 'AUDIO'].map(type => {
+                          {['VIDEO', 'PDF', 'MCQ', 'AUDIO', 'TOPIC_NOTES'].map(type => {
                               // @ts-ignore
                               const isVisible = localSettings.contentVisibility?.[type] !== false;
                               return (
                                   <div key={type} className="flex flex-col gap-2 bg-white p-3 rounded-xl border border-purple-100 items-center text-center">
-                                      <span className="font-bold text-slate-700 text-xs">{type}</span>
+                                      <span className="font-bold text-slate-700 text-xs">{type === 'TOPIC_NOTES' ? 'Topic Notes (Global)' : type}</span>
                                       <button 
                                          onClick={() => {
                                              const currentVis = localSettings.contentVisibility || {};
