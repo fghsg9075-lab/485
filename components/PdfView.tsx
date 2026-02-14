@@ -522,9 +522,6 @@ export const PdfView: React.FC<Props> = ({
                             ) : (
                                 <div style={{ width: `${settings?.playerLogoConfig?.size || 20}px`, height: `${settings?.playerLogoConfig?.size || 20}px`, fontSize: `${Math.max(6, (settings?.playerLogoConfig?.size || 20) * 0.4)}px` }} className="bg-rose-600 rounded flex items-center justify-center font-black text-white">IIC</div>
                             )}
-                            <span className="text-white font-black text-xs tracking-tighter">
-                                {settings?.playerBrandingText || 'Ideal Inspiration'}
-                            </span>
                         </div>
                     </div>
                    )}

@@ -552,6 +552,7 @@ export interface SystemSettings {
   };
   areTopicNotesHiddenGlobally?: boolean; // NEW: Global Topic Notes Toggle
   featureBadges?: Record<string, 'NEW' | 'UPGRADE' | 'NORMAL'>; // NEW: Feature Badges
+  storeFeatures?: { basic: string[], ultra: string[] }; // NEW: Dynamic Store Features
 }
 
 export interface ContentInfoItem {
