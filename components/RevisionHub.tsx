@@ -263,6 +263,20 @@ export const RevisionHub: React.FC<Props> = ({ user, onTabChange, settings, onNa
                             title: 'AI History',
                             subtitle: 'Review Learning Journey',
                             link: 'AI_HISTORY'
+                        },
+                        {
+                            id: 'ultra_pdf',
+                            image: 'https://img.freepik.com/free-vector/online-document-concept-illustration_114360-5454.jpg',
+                            title: 'Ultra PDF Notes',
+                            subtitle: 'Premium Handwritten Notes',
+                            link: 'PDF'
+                        },
+                        {
+                            id: 'ultra_mcq',
+                            image: 'https://img.freepik.com/free-vector/forms-concept-illustration_114360-4957.jpg',
+                            title: 'Ultra MCQ Tests',
+                            subtitle: 'Advanced Question Bank',
+                            link: 'MCQ'
                         }
                     ]}
                     interval={4000}
@@ -376,8 +390,9 @@ export const RevisionHub: React.FC<Props> = ({ user, onTabChange, settings, onNa
 
                                 let dueLabel = '';
                                 let dueColor = 'text-slate-400';
+                                const isDue = diffDays <= 0;
 
-                                if (diffDays <= 0) {
+                                if (isDue) {
                                     dueLabel = 'Due Today';
                                     dueColor = 'text-red-600 font-black animate-pulse';
                                 } else if (diffDays === 1) {
@@ -398,7 +413,13 @@ export const RevisionHub: React.FC<Props> = ({ user, onTabChange, settings, onNa
                                         <div className="flex justify-between items-start mb-4 pl-3">
                                             <div className="overflow-hidden flex-1 pr-2">
                                                 <h4 className="font-bold text-slate-800 text-sm truncate">{topic.name}</h4>
-                                                <div className="flex items-center gap-2 mt-1.5 flex-wrap">
+
+                                                {/* OMR Style Topic Breakdown Bar */}
+                                                <div className="mt-2 w-full max-w-[150px] h-2 bg-slate-100 rounded-full overflow-hidden flex">
+                                                    <div style={{ width: `${topic.score}%` }} className={`h-full ${topic.score >= 80 ? 'bg-green-500' : topic.score < 50 ? 'bg-red-500' : 'bg-orange-500'}`}></div>
+                                                </div>
+
+                                                <div className="flex items-center gap-2 mt-2 flex-wrap">
                                                     <span className={`text-[10px] font-black px-2 py-0.5 rounded-md flex items-center gap-1 border ${getStatusColor(topic.status)}`}>
                                                         {getStatusIcon(topic.status)} {topic.status}
                                                     </span>
@@ -413,18 +434,24 @@ export const RevisionHub: React.FC<Props> = ({ user, onTabChange, settings, onNa
                                                 <div className={`text-lg font-black ${topic.score >= 80 ? 'text-green-600' : topic.score < 50 ? 'text-red-600' : 'text-orange-600'}`}>
                                                     {Math.round(topic.score)}%
                                                 </div>
-                                                <div className="text-[9px] text-slate-400 font-bold uppercase tracking-wider">Score</div>
+                                                <div className="text-[9px] text-slate-400 font-bold uppercase tracking-wider">OMR</div>
                                             </div>
                                         </div>
 
-                                        {/* Main Action Buttons (Chapter Level) */}
+                                        {/* Main Action Buttons (Chapter Level) - ONLY SHOW IF DUE */}
                                         <div className="mb-2">
-                                            <button
-                                                onClick={() => onNavigateContent ? onNavigateContent('PDF', topic.id, undefined, topic.subjectName) : null}
-                                                className="w-full bg-blue-50 text-blue-600 py-3 rounded-lg text-xs font-bold hover:bg-blue-600 hover:text-white transition-colors flex items-center justify-center gap-2 shadow-sm"
-                                            >
-                                                <FileText size={16} /> Read Chapter Notes
-                                            </button>
+                                            {isDue ? (
+                                                <button
+                                                    onClick={() => onNavigateContent ? onNavigateContent('PDF', topic.id, undefined, topic.subjectName) : null}
+                                                    className="w-full bg-blue-600 text-white py-3 rounded-lg text-xs font-bold hover:bg-blue-700 shadow-lg shadow-blue-200 transition-all flex items-center justify-center gap-2 active:scale-95"
+                                                >
+                                                    <FileText size={16} /> Read Chapter Notes
+                                                </button>
+                                            ) : (
+                                                <div className="w-full bg-slate-100 text-slate-400 py-3 rounded-lg text-xs font-bold flex items-center justify-center gap-2 cursor-not-allowed border border-slate-200">
+                                                    <Clock size={16} /> Available in {diffDays} Days
+                                                </div>
+                                            )}
                                         </div>
 
                                         {/* Expand for Topics */}

@@ -221,8 +221,9 @@ export const McqReviewHub: React.FC<Props> = ({ user, onTabChange, settings, onN
 
                                 let dueLabel = '';
                                 let dueColor = 'text-slate-400';
+                                const isDue = diffDays <= 0;
 
-                                if (diffDays <= 0) {
+                                if (isDue) {
                                     dueLabel = 'Due Today';
                                     dueColor = 'text-red-600 font-black animate-pulse';
                                 } else if (diffDays === 1) {
@@ -241,7 +242,13 @@ export const McqReviewHub: React.FC<Props> = ({ user, onTabChange, settings, onN
                                         <div className="flex justify-between items-start mb-4 pl-3">
                                             <div className="overflow-hidden flex-1 pr-2">
                                                 <h4 className="font-bold text-slate-800 text-sm truncate">{task.name}</h4>
-                                                <div className="flex items-center gap-2 mt-1.5 flex-wrap">
+
+                                                {/* OMR Style Topic Breakdown Bar */}
+                                                <div className="mt-2 w-full max-w-[150px] h-2 bg-slate-100 rounded-full overflow-hidden flex">
+                                                    <div style={{ width: `${task.score}%` }} className={`h-full ${task.score >= 80 ? 'bg-green-500' : task.score < 50 ? 'bg-red-500' : 'bg-orange-500'}`}></div>
+                                                </div>
+
+                                                <div className="flex items-center gap-2 mt-2 flex-wrap">
                                                     <span className={`text-[10px] font-black px-2 py-0.5 rounded-md flex items-center gap-1 border ${getStatusColor(task.status)}`}>
                                                         {getStatusIcon(task.status)} {task.status}
                                                     </span>
@@ -259,12 +266,18 @@ export const McqReviewHub: React.FC<Props> = ({ user, onTabChange, settings, onN
                                             </div>
                                         </div>
 
-                                        <button
-                                            onClick={() => onNavigateContent ? onNavigateContent('MCQ', task.id, undefined, task.subjectName) : null}
-                                            className="w-full bg-purple-600 text-white py-3 rounded-xl font-bold hover:bg-purple-700 shadow-lg shadow-purple-200 transition-all flex items-center justify-center gap-2 active:scale-95"
-                                        >
-                                            <CheckSquare size={16} /> Start Review Test
-                                        </button>
+                                        {isDue ? (
+                                            <button
+                                                onClick={() => onNavigateContent ? onNavigateContent('MCQ', task.id, undefined, task.subjectName) : null}
+                                                className="w-full bg-purple-600 text-white py-3 rounded-xl font-bold hover:bg-purple-700 shadow-lg shadow-purple-200 transition-all flex items-center justify-center gap-2 active:scale-95"
+                                            >
+                                                <CheckSquare size={16} /> Start Review Test
+                                            </button>
+                                        ) : (
+                                            <div className="w-full bg-slate-100 text-slate-400 py-3 rounded-xl font-bold flex items-center justify-center gap-2 cursor-not-allowed border border-slate-200">
+                                                <Clock size={16} /> Unlock in {diffDays} Days
+                                            </div>
+                                        )}
                                     </div>
                                 );
                             })}
