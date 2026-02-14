@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { User, StudentTab, SystemSettings } from '../types';
-import { BrainCircuit, Clock, CheckCircle, TrendingUp, AlertTriangle, ArrowRight, Bot, Sparkles, BookOpen, AlertCircle, X, FileText, CheckSquare, Calendar, Zap, AlertCircle as AlertIcon, ChevronDown, ChevronUp, Loader2 } from 'lucide-react';
+import { BrainCircuit, Clock, CheckCircle, TrendingUp, AlertTriangle, ArrowRight, Bot, Sparkles, BookOpen, AlertCircle, X, FileText, CheckSquare, Calendar, Zap, AlertCircle as AlertIcon, ChevronDown, ChevronUp, Loader2, Lock, Unlock } from 'lucide-react';
 import { BannerCarousel } from './BannerCarousel';
 import { generateCustomNotes } from '../services/groq';
 import { saveAiInteraction, getChapterData } from '../firebase';
@@ -52,6 +52,9 @@ export const RevisionHub: React.FC<Props> = ({ user, onTabChange, settings, onNa
         // Sort history chronologically (oldest first) so newer attempts overwrite older ones in the Map
         const sortedHistory = [...history].sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime());
 
+        // Track streaks for 2x > 80% logic (30 days)
+        const streakTracker = new Map<string, number>();
+
         sortedHistory.forEach(result => {
             const attemptDate = new Date(result.date);
             const chapterTitle = result.chapterTitle || 'Unknown Chapter';
@@ -64,32 +67,44 @@ export const RevisionHub: React.FC<Props> = ({ user, onTabChange, settings, onNa
                     if (parsed.topics && Array.isArray(parsed.topics)) {
                         hasSubTopics = true;
                         parsed.topics.forEach((t: any) => {
+                            // Determine Streak Key (Unique to SubTopic)
+                            const uniqueId = `${result.chapterId}_${t.name.trim()}`;
+                            let streak = streakTracker.get(uniqueId) || 0;
+
                             // Extract Status and Logic
                             let status: TopicStatus = 'AVERAGE';
                             let daysToAdd = 3;
 
                             if (t.status === 'WEAK') {
                                 status = 'WEAK';
-                                daysToAdd = 1; // User Request: Weak = 1 Day
+                                daysToAdd = 2; // < 50% -> 2 days
+                                streak = 0; // Reset streak
                             } else if (t.status === 'STRONG') {
                                 status = 'STRONG';
-                                daysToAdd = 7; // User Request: Strong = 7 Days
+                                streak += 1;
+
+                                if (streak >= 2) {
+                                    daysToAdd = 30; // 2x > 80% -> 30 days
+                                } else {
+                                    daysToAdd = 7; // > 80% -> 7 days
+                                }
                             } else {
                                 status = 'AVERAGE';
-                                daysToAdd = 3; // User Request: Average = 3 Days
+                                daysToAdd = 3; // 50-80% -> 3 days
+                                streak = 0; // Reset streak
                             }
+
+                            streakTracker.set(uniqueId, streak);
 
                             const nextRev = new Date(attemptDate);
                             nextRev.setDate(nextRev.getDate() + daysToAdd);
-
-                            const uniqueId = `${result.chapterId}_${t.name.trim()}`;
 
                             topicMap.set(uniqueId, {
                                 id: uniqueId,
                                 chapterId: result.chapterId,
                                 chapterName: chapterTitle,
                                 name: t.name, // Sub-topic Name
-                                score: result.score, // Chapter Score (Approximate for sub-topic unless we have granular data)
+                                score: result.score, // Chapter Score
                                 lastAttempt: result.date,
                                 status,
                                 nextRevision: nextRev.toISOString(),
@@ -106,27 +121,35 @@ export const RevisionHub: React.FC<Props> = ({ user, onTabChange, settings, onNa
             // 2. Fallback: If no sub-topics found, create a generic Chapter Item
             if (!hasSubTopics) {
                 const percentage = (result.score / result.totalQuestions) * 100;
+                const uniqueId = result.chapterId;
+                let streak = streakTracker.get(uniqueId) || 0;
 
                 let status: TopicStatus = 'AVERAGE';
                 let daysToAdd = 3;
 
                 if (percentage < 50) {
                     status = 'WEAK';
-                    daysToAdd = 1;
+                    daysToAdd = 2;
+                    streak = 0;
                 } else if (percentage >= 80) {
                     status = 'STRONG';
-                    daysToAdd = 7;
+                    streak += 1;
+                    if (streak >= 2) daysToAdd = 30;
+                    else daysToAdd = 7;
                 } else {
                     status = 'AVERAGE';
                     daysToAdd = 3;
+                    streak = 0;
                 }
+
+                streakTracker.set(uniqueId, streak);
 
                 const nextRev = new Date(attemptDate);
                 nextRev.setDate(nextRev.getDate() + daysToAdd);
 
                 // Use chapterId as key so later attempts overwrite earlier ones
-                topicMap.set(result.chapterId, {
-                    id: result.chapterId,
+                topicMap.set(uniqueId, {
+                    id: uniqueId,
                     chapterId: result.chapterId,
                     chapterName: chapterTitle,
                     name: chapterTitle, // Display Chapter Name
@@ -203,6 +226,82 @@ export const RevisionHub: React.FC<Props> = ({ user, onTabChange, settings, onNa
         }
     };
 
+    const slides = [
+        {
+            id: 'ai_tutor',
+            image: 'https://img.freepik.com/free-vector/chat-bot-concept-illustration_114360-5522.jpg',
+            title: 'AI Personal Tutor',
+            subtitle: 'Instant Doubt Solving',
+            link: 'AI_CHAT'
+        },
+        {
+            id: 'ultra_pdf',
+            image: 'https://img.freepik.com/free-vector/online-document-concept-illustration_114360-5454.jpg',
+            title: 'Ultra PDF Notes',
+            subtitle: 'Premium Handwritten Notes',
+            link: 'PDF'
+        },
+        {
+            id: 'ultra_mcq',
+            image: 'https://img.freepik.com/free-vector/forms-concept-illustration_114360-4957.jpg',
+            title: 'Ultra MCQ Tests',
+            subtitle: 'Advanced Question Bank',
+            link: 'MCQ'
+        },
+        {
+            id: 'ultra_video',
+            image: 'https://img.freepik.com/free-vector/video-tutorials-concept-illustration_114360-1557.jpg',
+            title: 'Ultra Video Classes',
+            subtitle: 'Learn with Visuals',
+            link: 'VIDEO'
+        },
+        {
+            id: 'ultra_audio',
+            image: 'https://img.freepik.com/free-vector/podcast-concept-illustration_114360-1049.jpg',
+            title: 'Ultra Audio Learning',
+            subtitle: 'Listen & Learn',
+            link: 'AUDIO'
+        },
+        {
+            id: 'subscription',
+            image: 'https://img.freepik.com/free-vector/subscription-model-concept-illustration_114360-6395.jpg',
+            title: 'Premium Subscription',
+            subtitle: 'Unlock All Features',
+            link: 'STORE'
+        },
+        {
+            id: 'ai_agent',
+            image: 'https://img.freepik.com/free-vector/online-assistant-user-help-faq-personal-helper-web-support-worker-virtual-call-center-consultant-messaging-cartoon-character_335657-2544.jpg',
+            title: 'AI Agent (Notes)',
+            subtitle: 'Get Instant Notes',
+            link: 'AI_AGENT'
+        },
+        {
+            id: 'deep_analysis',
+            image: 'https://img.freepik.com/free-vector/data-analysis-concept-illustration_114360-8023.jpg',
+            title: 'Deep Analysis',
+            subtitle: 'Unlock Performance Insights',
+            link: 'DEEP_ANALYSIS'
+        },
+        {
+            id: 'ai_history',
+            image: 'https://img.freepik.com/free-vector/memory-storage-concept-illustration_114360-1599.jpg',
+            title: 'AI History',
+            subtitle: 'Review Learning Journey',
+            link: 'AI_HISTORY'
+        }
+    ];
+
+    if (settings?.specialDiscountEvent?.enabled) {
+        slides.unshift({
+            id: 'discount_offer',
+            image: 'https://img.freepik.com/free-vector/sale-banner-with-product-description_1361-1333.jpg',
+            title: settings.specialDiscountEvent.eventName || 'Special Offer',
+            subtitle: `${settings.specialDiscountEvent.discountPercent}% OFF Limited Time`,
+            link: 'STORE'
+        });
+    }
+
     return (
         <div className="space-y-6 pb-24 p-4 animate-in fade-in">
             <div className="flex items-center justify-between mb-2">
@@ -224,78 +323,7 @@ export const RevisionHub: React.FC<Props> = ({ user, onTabChange, settings, onNa
                             setShowAiModal(true);
                         }
                     }}
-                    slides={[
-                        {
-                            id: 'ai_tutor',
-                            image: 'https://img.freepik.com/free-vector/chat-bot-concept-illustration_114360-5522.jpg',
-                            title: 'AI Personal Tutor',
-                            subtitle: 'Instant Doubt Solving',
-                            link: 'AI_CHAT'
-                        },
-                        {
-                            id: 'ultra_video',
-                            image: 'https://img.freepik.com/free-vector/video-tutorials-concept-illustration_114360-1557.jpg',
-                            title: 'Ultra Video Classes',
-                            subtitle: 'Learn with Visuals',
-                            link: 'VIDEO'
-                        },
-                        {
-                            id: 'ultra_audio',
-                            image: 'https://img.freepik.com/free-vector/podcast-concept-illustration_114360-1049.jpg',
-                            title: 'Ultra Audio Learning',
-                            subtitle: 'Listen & Learn',
-                            link: 'AUDIO'
-                        },
-                        {
-                            id: 'subscription',
-                            image: 'https://img.freepik.com/free-vector/subscription-model-concept-illustration_114360-6395.jpg',
-                            title: 'Premium Subscription',
-                            subtitle: 'Unlock All Features',
-                            link: 'STORE'
-                        },
-                        {
-                            id: 'ai_agent',
-                            image: 'https://img.freepik.com/free-vector/online-assistant-user-help-faq-personal-helper-web-support-worker-virtual-call-center-consultant-messaging-cartoon-character_335657-2544.jpg',
-                            title: 'AI Agent (Notes)',
-                            subtitle: 'Get Instant Notes',
-                            link: 'AI_AGENT'
-                        },
-                        {
-                            id: 'revision_tips',
-                            image: 'https://img.freepik.com/free-vector/exams-concept-illustration_114360-2754.jpg',
-                            title: 'Smart Revision',
-                            subtitle: 'Focus on Weak Topics',
-                            link: ''
-                        },
-                        {
-                            id: 'deep_analysis',
-                            image: 'https://img.freepik.com/free-vector/data-analysis-concept-illustration_114360-8023.jpg',
-                            title: 'Deep Analysis',
-                            subtitle: 'Unlock Performance Insights',
-                            link: 'DEEP_ANALYSIS'
-                        },
-                        {
-                            id: 'ai_history',
-                            image: 'https://img.freepik.com/free-vector/memory-storage-concept-illustration_114360-1599.jpg',
-                            title: 'AI History',
-                            subtitle: 'Review Learning Journey',
-                            link: 'AI_HISTORY'
-                        },
-                        {
-                            id: 'ultra_pdf',
-                            image: 'https://img.freepik.com/free-vector/online-document-concept-illustration_114360-5454.jpg',
-                            title: 'Ultra PDF Notes',
-                            subtitle: 'Premium Handwritten Notes',
-                            link: 'PDF'
-                        },
-                        {
-                            id: 'ultra_mcq',
-                            image: 'https://img.freepik.com/free-vector/forms-concept-illustration_114360-4957.jpg',
-                            title: 'Ultra MCQ Tests',
-                            subtitle: 'Advanced Question Bank',
-                            link: 'MCQ'
-                        }
-                    ]}
+                    slides={slides}
                     interval={4000}
                     autoPlay={true}
                     showDots={true}
@@ -420,60 +448,78 @@ export const RevisionHub: React.FC<Props> = ({ user, onTabChange, settings, onNa
                                     dueColor = 'text-blue-500 font-bold';
                                 }
 
-                                return (
-                                    <div key={idx} className="bg-white p-4 rounded-xl border border-slate-100 shadow-sm hover:shadow-md transition-all relative overflow-hidden">
-                                        {/* Status Stripe */}
-                                        <div className={`absolute left-0 top-0 bottom-0 w-1 ${topic.status === 'WEAK' ? 'bg-red-500' : topic.status === 'STRONG' ? 'bg-green-500' : 'bg-orange-500'}`}></div>
+                                // OMR BAR STYLE LOGIC
+                                let barColor = 'bg-blue-500';
+                                let barWidth = '60%';
 
-                                        <div className="flex justify-between items-start mb-4 pl-3">
-                                            <div className="overflow-hidden flex-1 pr-2">
-                                                {/* Parent Chapter Badge (If this is a subtopic) */}
+                                if (topic.status === 'WEAK') { barColor = 'bg-red-500'; barWidth = '30%'; }
+                                else if (topic.status === 'STRONG') { barColor = 'bg-green-500'; barWidth = '90%'; }
+                                else { barColor = 'bg-orange-500'; barWidth = '60%'; }
+
+                                return (
+                                    <div key={idx} className="bg-white p-3 rounded-xl border border-slate-200 shadow-sm hover:shadow-md transition-all">
+                                        {/* HEADER: TITLE + DUE DATE */}
+                                        <div className="flex justify-between items-start mb-2">
+                                            <div className="flex-1 pr-2">
                                                 {topic.isSubTopic && (
-                                                    <span className="text-[9px] font-bold text-slate-400 uppercase tracking-wider mb-1 block">
+                                                    <span className="text-[9px] font-bold text-slate-400 uppercase tracking-wider block">
                                                         {topic.chapterName}
                                                     </span>
                                                 )}
-
                                                 <h4 className="font-bold text-slate-800 text-sm truncate">{topic.name}</h4>
-
-                                                <div className="flex items-center gap-2 mt-2 flex-wrap">
-                                                    <span className={`text-[10px] font-black px-2 py-0.5 rounded-md flex items-center gap-1 border ${getStatusColor(topic.status)}`}>
-                                                        {getStatusIcon(topic.status)} {topic.status}
-                                                    </span>
-                                                    <span className={`text-[10px] flex items-center gap-1 bg-slate-50 px-2 py-0.5 rounded-md border border-slate-200 ${dueColor}`}>
-                                                        <Clock size={10} className="inline" /> {dueLabel}
-                                                    </span>
-                                                </div>
                                             </div>
+                                            <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full ${isDue ? 'bg-red-100 text-red-600 animate-pulse' : 'bg-slate-100 text-slate-500'}`}>
+                                                {isDue ? 'TODAY' : dueLabel}
+                                            </span>
+                                        </div>
 
-                                            {/* OMR Style Score Badge */}
-                                            {/* We only show score if it's not sub-topic or if we want to show parent score */}
-                                            {!topic.isSubTopic && (
-                                                <div className="flex flex-col items-center justify-center bg-slate-50 border border-slate-200 rounded-lg p-2 min-w-[50px]">
-                                                    <div className={`text-lg font-black ${topic.score >= 80 ? 'text-green-600' : topic.score < 50 ? 'text-red-600' : 'text-orange-600'}`}>
-                                                        {Math.round(topic.score)}%
-                                                    </div>
-                                                    <div className="text-[9px] text-slate-400 font-bold uppercase tracking-wider">OMR</div>
+                                        {/* PROGRESS BAR (OMR Style) */}
+                                        <div className="mb-3">
+                                            <div className="flex justify-between items-end mb-1">
+                                                <span className={`text-[10px] font-black uppercase ${topic.status === 'WEAK' ? 'text-red-500' : topic.status === 'STRONG' ? 'text-green-600' : 'text-orange-500'}`}>
+                                                    {topic.status}
+                                                </span>
+                                                {/* Hidden score if vague subtopic */}
+                                                <span className="text-[10px] text-slate-400 font-bold">
+                                                    {Math.round(topic.score)}%
+                                                </span>
+                                            </div>
+                                            <div className="h-2 w-full bg-slate-100 rounded-full overflow-hidden">
+                                                <div className={`h-full ${barColor} transition-all duration-1000`} style={{ width: barWidth }}></div>
+                                            </div>
+                                        </div>
+
+                                        {/* ACTIONS (Only Active if Due, else "Locked" View) */}
+                                        {isDue ? (
+                                            <div className="grid grid-cols-2 gap-2">
+                                                <button
+                                                    onClick={() => onNavigateContent ? onNavigateContent('PDF', topic.chapterId, topic.isSubTopic ? topic.name : undefined, topic.subjectName) : null}
+                                                    className="w-full bg-blue-600 text-white py-2 rounded-lg text-xs font-bold hover:bg-blue-700 shadow-lg shadow-blue-200 transition-all flex items-center justify-center gap-2 active:scale-95"
+                                                >
+                                                    <FileText size={14} /> Read Notes
+                                                </button>
+
+                                                <button
+                                                    onClick={() => onNavigateContent ? onNavigateContent('MCQ', topic.chapterId, topic.isSubTopic ? topic.name : undefined, topic.subjectName) : null}
+                                                    className="w-full bg-white text-slate-700 border border-slate-200 py-2 rounded-lg text-xs font-bold hover:bg-slate-50 transition-all flex items-center justify-center gap-2 active:scale-95"
+                                                >
+                                                    <CheckSquare size={14} /> MCQ
+                                                </button>
+                                            </div>
+                                        ) : (
+                                            <div className="flex items-center justify-between bg-slate-50 p-2 rounded-lg border border-slate-100">
+                                                <div className="flex items-center gap-2 text-slate-400">
+                                                    <Clock size={14} />
+                                                    <span className="text-[10px] font-bold">Locked until due date</span>
                                                 </div>
-                                            )}
-                                        </div>
-
-                                        {/* Main Action Buttons */}
-                                        <div className="grid grid-cols-2 gap-2 mt-2">
-                                            <button
-                                                onClick={() => onNavigateContent ? onNavigateContent('PDF', topic.chapterId, topic.isSubTopic ? topic.name : undefined, topic.subjectName) : null}
-                                                className="w-full bg-blue-600 text-white py-2.5 rounded-lg text-xs font-bold hover:bg-blue-700 shadow-lg shadow-blue-200 transition-all flex items-center justify-center gap-2 active:scale-95"
-                                            >
-                                                <FileText size={16} /> Revise Notes
-                                            </button>
-
-                                            <button
-                                                onClick={() => onNavigateContent ? onNavigateContent('MCQ', topic.chapterId, topic.isSubTopic ? topic.name : undefined, topic.subjectName) : null}
-                                                className="w-full bg-white text-slate-700 border border-slate-200 py-2.5 rounded-lg text-xs font-bold hover:bg-slate-50 transition-all flex items-center justify-center gap-2 active:scale-95"
-                                            >
-                                                <CheckSquare size={16} /> Practice MCQ
-                                            </button>
-                                        </div>
+                                                <button
+                                                    onClick={() => onNavigateContent ? onNavigateContent('PDF', topic.chapterId, topic.isSubTopic ? topic.name : undefined, topic.subjectName) : null}
+                                                    className="text-[10px] font-black text-blue-600 hover:underline flex items-center gap-1"
+                                                >
+                                                    <Unlock size={10} /> Revise Early
+                                                </button>
+                                            </div>
+                                        )}
                                     </div>
                                 );
                             })}
