@@ -1,12 +1,15 @@
-
 import React, { useState, useEffect } from 'react';
-import { User, StudentTab, MCQResult } from '../types';
-import { BrainCircuit, Clock, CheckCircle, TrendingUp, AlertTriangle, ArrowRight, Bot, Sparkles, BookOpen } from 'lucide-react';
+import { User, StudentTab, SystemSettings } from '../types';
+import { BrainCircuit, Clock, CheckCircle, TrendingUp, AlertTriangle, ArrowRight, Bot, Sparkles, BookOpen, AlertCircle, X } from 'lucide-react';
 import { BannerCarousel } from './BannerCarousel';
+import { generateCustomNotes } from '../services/groq';
+import { saveAiInteraction } from '../firebase';
+import { CustomAlert } from './CustomDialogs';
 
 interface Props {
     user: User;
     onTabChange: (tab: StudentTab) => void;
+    settings?: SystemSettings;
 }
 
 type TopicStatus = 'WEAK' | 'AVERAGE' | 'STRONG';
@@ -20,9 +23,21 @@ interface TopicItem {
     nextRevision: string; // ISO Date
 }
 
-export const RevisionHub: React.FC<Props> = ({ user, onTabChange }) => {
+export const RevisionHub: React.FC<Props> = ({ user, onTabChange, settings }) => {
     const [topics, setTopics] = useState<TopicItem[]>([]);
     const [filter, setFilter] = useState<'ALL' | 'WEAK' | 'AVERAGE' | 'STRONG'>('ALL');
+
+    // AI Modal State
+    const [showAiModal, setShowAiModal] = useState(false);
+    const [aiTopic, setAiTopic] = useState('');
+    const [aiGenerating, setAiGenerating] = useState(false);
+    const [aiResult, setAiResult] = useState<string | null>(null);
+
+    // Custom Alert State
+    const [alertConfig, setAlertConfig] = useState<{isOpen: boolean, type: 'SUCCESS'|'ERROR'|'INFO', title?: string, message: string}>({isOpen: false, type: 'INFO', message: ''});
+    const showAlert = (msg: string, type: 'SUCCESS'|'ERROR'|'INFO' = 'INFO', title?: string) => {
+        setAlertConfig({ isOpen: true, type, title, message: msg });
+    };
 
     useEffect(() => {
         // Logic to process user.mcqHistory into Topics
@@ -100,6 +115,54 @@ export const RevisionHub: React.FC<Props> = ({ user, onTabChange }) => {
         return <TrendingUp size={14} />;
     };
 
+    const handleAiNotesGeneration = async () => {
+        if (!aiTopic.trim()) {
+            showAlert("Please enter a topic!", "ERROR");
+            return;
+        }
+
+        // Check Limits
+        const today = new Date().toDateString();
+        const usageKey = `nst_ai_usage_${user.id}_${today}`;
+        const currentUsage = parseInt(localStorage.getItem(usageKey) || '0');
+
+        let limit = settings?.aiLimits?.free || 0; // Default Free Limit
+        if (user.subscriptionLevel === 'BASIC' && user.isPremium) limit = settings?.aiLimits?.basic || 0;
+        if (user.subscriptionLevel === 'ULTRA' && user.isPremium) limit = settings?.aiLimits?.ultra || 0;
+
+        if (currentUsage >= limit) {
+            showAlert(`Daily Limit Reached! You have used ${currentUsage}/${limit} AI generations today.`, "ERROR", "Limit Exceeded");
+            return;
+        }
+
+        setAiGenerating(true);
+        try {
+            const notes = await generateCustomNotes(aiTopic, settings?.aiNotesPrompt || '', settings?.aiModel);
+            setAiResult(notes);
+
+            // Increment Usage
+            localStorage.setItem(usageKey, (currentUsage + 1).toString());
+
+            // SAVE TO HISTORY
+            saveAiInteraction({
+                id: `ai-note-${Date.now()}`,
+                userId: user.id,
+                userName: user.name,
+                type: 'AI_NOTES',
+                query: aiTopic,
+                response: notes,
+                timestamp: new Date().toISOString()
+            });
+
+            showAlert("Notes Generated Successfully!", "SUCCESS");
+        } catch (e) {
+            console.error(e);
+            showAlert("Failed to generate notes. Please try again.", "ERROR");
+        } finally {
+            setAiGenerating(false);
+        }
+    };
+
     const filteredTopics = filter === 'ALL' ? topics : topics.filter(t => t.status === filter);
 
     return (
@@ -119,6 +182,8 @@ export const RevisionHub: React.FC<Props> = ({ user, onTabChange }) => {
                     onBannerClick={(link) => {
                         if (['STORE', 'CUSTOM_PAGE', 'VIDEO', 'PDF', 'MCQ', 'AUDIO', 'AI_CHAT'].includes(link)) {
                             onTabChange(link as any);
+                        } else if (link === 'AI_AGENT') {
+                            setShowAiModal(true);
                         }
                     }}
                     slides={[
@@ -128,6 +193,13 @@ export const RevisionHub: React.FC<Props> = ({ user, onTabChange }) => {
                             title: 'AI Personal Tutor',
                             subtitle: 'Instant Doubt Solving',
                             link: 'AI_CHAT'
+                        },
+                        {
+                            id: 'ai_agent',
+                            image: 'https://img.freepik.com/free-vector/online-assistant-user-help-faq-personal-helper-web-support-worker-virtual-call-center-consultant-messaging-cartoon-character_335657-2544.jpg',
+                            title: 'AI Agent (Notes)',
+                            subtitle: 'Get Instant Notes',
+                            link: 'AI_AGENT'
                         },
                         {
                             id: 'revision_tips',
@@ -145,7 +217,7 @@ export const RevisionHub: React.FC<Props> = ({ user, onTabChange }) => {
             </div>
 
             {/* AI TOOLS SHORTCUTS */}
-            <div className="grid grid-cols-2 gap-3 mb-6">
+            <div className="grid grid-cols-3 gap-3 mb-6">
                 <button
                     onClick={() => onTabChange('AI_CHAT')}
                     className="bg-white p-4 rounded-2xl shadow-sm border border-indigo-100 flex flex-col items-center gap-2 hover:shadow-md transition-all group"
@@ -153,16 +225,27 @@ export const RevisionHub: React.FC<Props> = ({ user, onTabChange }) => {
                     <div className="w-10 h-10 bg-indigo-100 rounded-full flex items-center justify-center text-indigo-600 group-hover:scale-110 transition-transform">
                         <Bot size={20} />
                     </div>
-                    <span className="text-xs font-bold text-slate-700">AI Tutor</span>
+                    <span className="text-xs font-bold text-slate-700 text-center leading-tight">AI Tutor</span>
                 </button>
+
                 <button
-                    onClick={() => onTabChange('DEEP_ANALYSIS')}
+                    onClick={() => setShowAiModal(true)}
                     className="bg-white p-4 rounded-2xl shadow-sm border border-purple-100 flex flex-col items-center gap-2 hover:shadow-md transition-all group"
                 >
                     <div className="w-10 h-10 bg-purple-100 rounded-full flex items-center justify-center text-purple-600 group-hover:scale-110 transition-transform">
+                        <BrainCircuit size={20} />
+                    </div>
+                    <span className="text-xs font-bold text-slate-700 text-center leading-tight">AI Agent</span>
+                </button>
+
+                <button
+                    onClick={() => onTabChange('DEEP_ANALYSIS')}
+                    className="bg-white p-4 rounded-2xl shadow-sm border border-pink-100 flex flex-col items-center gap-2 hover:shadow-md transition-all group"
+                >
+                    <div className="w-10 h-10 bg-pink-100 rounded-full flex items-center justify-center text-pink-600 group-hover:scale-110 transition-transform">
                         <Sparkles size={20} />
                     </div>
-                    <span className="text-xs font-bold text-slate-700">Deep Analysis</span>
+                    <span className="text-xs font-bold text-slate-700 text-center leading-tight">Deep Analysis</span>
                 </button>
             </div>
 
@@ -225,6 +308,90 @@ export const RevisionHub: React.FC<Props> = ({ user, onTabChange }) => {
                     </div>
                 )}
             </div>
+
+            {/* AI NOTES MODAL */}
+            {showAiModal && (
+                <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-slate-900/80 backdrop-blur-md animate-in fade-in">
+                    <div className="bg-white rounded-3xl p-6 w-full max-w-lg shadow-2xl overflow-hidden flex flex-col max-h-[85vh]">
+                        <div className="flex justify-between items-center mb-6">
+                            <div className="flex items-center gap-3">
+                                <div className="w-10 h-10 bg-indigo-100 rounded-full flex items-center justify-center text-indigo-600">
+                                    <BrainCircuit size={20} />
+                                </div>
+                                <div>
+                                    <h3 className="text-lg font-black text-slate-800">{settings?.aiName || 'AI Notes'}</h3>
+                                    <p className="text-xs text-slate-500">Instant Note Generator</p>
+                                </div>
+                            </div>
+                            <button onClick={() => {setShowAiModal(false); setAiResult(null);}} className="p-2 hover:bg-slate-100 rounded-full"><X size={20} /></button>
+                        </div>
+
+                        {!aiResult ? (
+                            <div className="space-y-4">
+                                <div>
+                                    <label className="text-xs font-bold text-slate-500 uppercase block mb-2">What topic do you want notes for?</label>
+                                    <textarea
+                                        value={aiTopic}
+                                        onChange={(e) => setAiTopic(e.target.value)}
+                                        placeholder="e.g. Newton's Laws of Motion, Photosynthesis process..."
+                                        className="w-full p-4 bg-slate-50 border-none rounded-2xl text-slate-800 focus:ring-2 focus:ring-indigo-100 h-32 resize-none"
+                                    />
+                                </div>
+
+                                <div className="bg-blue-50 p-4 rounded-xl border border-blue-100 flex items-start gap-3">
+                                    <AlertCircle size={16} className="text-blue-600 mt-0.5 shrink-0" />
+                                    <div className="text-xs text-blue-800">
+                                        <span className="font-bold block mb-1">Usage Limit</span>
+                                        You can generate notes within your daily limit.
+                                        {user.isPremium ? (user.subscriptionLevel === 'ULTRA' ? ' (Ultra Plan: High Limit)' : ' (Basic Plan: Medium Limit)') : ' (Free Plan: Low Limit)'}
+                                    </div>
+                                </div>
+
+                                <button
+                                    onClick={handleAiNotesGeneration}
+                                    disabled={aiGenerating}
+                                    className="w-full py-4 bg-indigo-600 text-white font-black rounded-xl shadow-lg shadow-indigo-200 hover:bg-indigo-700 active:scale-95 transition-all flex items-center justify-center gap-2"
+                                >
+                                    {aiGenerating ? <Sparkles className="animate-spin" /> : <Sparkles />}
+                                    {aiGenerating ? "Generating Magic..." : "Generate Notes"}
+                                </button>
+                            </div>
+                        ) : (
+                            <div className="flex-1 overflow-hidden flex flex-col">
+                                <div className="flex-1 overflow-y-auto bg-slate-50 p-4 rounded-xl border border-slate-100 mb-4 prose prose-sm max-w-none">
+                                    <div className="whitespace-pre-wrap">{aiResult}</div>
+                                </div>
+                                <div className="flex gap-2">
+                                    <button
+                                        onClick={() => setAiResult(null)}
+                                        className="flex-1 py-3 bg-slate-100 text-slate-600 font-bold rounded-xl"
+                                    >
+                                        New Topic
+                                    </button>
+                                    <button
+                                        onClick={() => {
+                                            navigator.clipboard.writeText(aiResult);
+                                            showAlert("Notes Copied!", "SUCCESS");
+                                        }}
+                                        className="flex-1 py-3 bg-indigo-600 text-white font-bold rounded-xl shadow-lg"
+                                    >
+                                        Copy Text
+                                    </button>
+                                </div>
+                            </div>
+                        )}
+                    </div>
+                </div>
+            )}
+
+            {/* GLOBAL ALERT MODAL */}
+            <CustomAlert
+                isOpen={alertConfig.isOpen}
+                type={alertConfig.type}
+                title={alertConfig.title}
+                message={alertConfig.message}
+                onClose={() => setAlertConfig(prev => ({...prev, isOpen: false}))}
+            />
         </div>
     );
 };
