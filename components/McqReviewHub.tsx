@@ -9,7 +9,7 @@ interface Props {
     user: User;
     onTabChange: (tab: StudentTab) => void;
     settings?: SystemSettings;
-    onNavigateContent?: (type: 'MCQ', chapterId: string, topicName?: string) => void;
+    onNavigateContent?: (type: 'MCQ', chapterId: string, topicName?: string, subjectName?: string) => void;
 }
 
 type TopicStatus = 'WEAK' | 'AVERAGE' | 'STRONG' | 'MASTERED';
@@ -260,7 +260,7 @@ export const McqReviewHub: React.FC<Props> = ({ user, onTabChange, settings, onN
                                         </div>
 
                                         <button
-                                            onClick={() => onNavigateContent ? onNavigateContent('MCQ', task.id) : null}
+                                            onClick={() => onNavigateContent ? onNavigateContent('MCQ', task.id, undefined, task.subjectName) : null}
                                             className="w-full bg-purple-600 text-white py-3 rounded-xl font-bold hover:bg-purple-700 shadow-lg shadow-purple-200 transition-all flex items-center justify-center gap-2 active:scale-95"
                                         >
                                             <CheckSquare size={16} /> Start Review Test

@@ -12,7 +12,7 @@ interface Props {
     user: User;
     onTabChange: (tab: StudentTab) => void;
     settings?: SystemSettings;
-    onNavigateContent?: (type: 'PDF' | 'MCQ', chapterId: string, topicName?: string) => void;
+    onNavigateContent?: (type: 'PDF' | 'MCQ', chapterId: string, topicName?: string, subjectName?: string) => void;
 }
 
 type TopicStatus = 'WEAK' | 'AVERAGE' | 'STRONG';
@@ -420,7 +420,7 @@ export const RevisionHub: React.FC<Props> = ({ user, onTabChange, settings, onNa
                                         {/* Main Action Buttons (Chapter Level) */}
                                         <div className="mb-2">
                                             <button
-                                                onClick={() => onNavigateContent ? onNavigateContent('PDF', topic.id) : null}
+                                                onClick={() => onNavigateContent ? onNavigateContent('PDF', topic.id, undefined, topic.subjectName) : null}
                                                 className="w-full bg-blue-50 text-blue-600 py-3 rounded-lg text-xs font-bold hover:bg-blue-600 hover:text-white transition-colors flex items-center justify-center gap-2 shadow-sm"
                                             >
                                                 <FileText size={16} /> Read Chapter Notes
@@ -453,7 +453,7 @@ export const RevisionHub: React.FC<Props> = ({ user, onTabChange, settings, onNa
                                                             <span className="text-xs font-bold text-slate-700 truncate flex-1">{subTopic}</span>
                                                             <div className="flex items-center gap-1">
                                                                 <button
-                                                                    onClick={() => onNavigateContent ? onNavigateContent('PDF', topic.id, subTopic) : null}
+                                                                    onClick={() => onNavigateContent ? onNavigateContent('PDF', topic.id, subTopic, topic.subjectName) : null}
                                                                     className="p-1.5 text-blue-600 bg-white rounded-md shadow-sm hover:bg-blue-600 hover:text-white transition-colors flex items-center gap-1 px-2"
                                                                     title="Read Notes"
                                                                 >
