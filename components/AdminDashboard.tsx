@@ -12,6 +12,7 @@ import { storage } from '../utils/storage';
 import { SimpleRichTextEditor } from './SimpleRichTextEditor';
 import { ImageCropper } from './ImageCropper';
 import { DEFAULT_SYLLABUS, MonthlySyllabus } from '../syllabus_data';
+import { CustomAlert } from './CustomDialogs';
 
 const DEFAULT_BASIC_FEATURES = [
     'Daily Login Bonus: 10 Credits/Day',
@@ -32,8 +33,6 @@ const DEFAULT_ULTRA_FEATURES = [
     'Competitive Mode Unlocked 🏆',
     'Spin Wheel (10 Spins/Day)'
 ];
-
-import { CustomAlert } from './CustomDialogs';
 import { UniversalChat } from './UniversalChat';
 import { ChallengeCreator20 } from './admin/ChallengeCreator20';
 // @ts-ignore
