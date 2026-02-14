@@ -4187,10 +4187,35 @@ Capital of India?       Mumbai  Delhi   Kolkata Chennai 2       Delhi is the cap
                                   />
                               </div>
 
+                              {/* PRIMARY FREE NOTE (MAIN) */}
+                              <div className="bg-green-50 p-4 rounded-xl border border-green-100">
+                                  <label className="block text-xs font-black text-green-800 uppercase mb-1 flex items-center gap-2">
+                                      <FileText size={14} /> Primary Free Note Link ({syllabusMode})
+                                  </label>
+                                  <div className="flex items-center bg-white border border-green-200 rounded-xl overflow-hidden mb-2">
+                                      <div className="bg-green-50 p-3"><Link size={16} className="text-green-600" /></div>
+                                      <input
+                                          type="text"
+                                          value={editConfig[getModeField('pdfLink') as keyof ContentConfig] || ''}
+                                          onChange={e => setEditConfig({...editConfig, [getModeField('pdfLink')]: e.target.value})}
+                                          className="flex-1 p-3 outline-none text-sm"
+                                          placeholder={`https://drive.google.com/... (${syllabusMode} Only)`}
+                                      />
+                                  </div>
+
+                                  <label className="block text-[10px] font-bold text-green-700 uppercase mb-1 mt-3">OR Paste Primary Note Text</label>
+                                  <textarea
+                                      value={editConfig[getModeField('freeNotesHtml') as keyof ContentConfig] || ''}
+                                      onChange={e => setEditConfig({...editConfig, [getModeField('freeNotesHtml')]: e.target.value})}
+                                      className="w-full p-3 border border-green-200 rounded-xl text-sm h-32 focus:ring-2 focus:ring-green-500 outline-none"
+                                      placeholder={`Paste detailed notes here...`}
+                                  />
+                              </div>
+
                               {/* UNLIMITED FREE NOTES MANAGER */}
                               <div className="bg-green-50 p-4 rounded-xl border border-green-100">
                                   <h4 className="font-bold text-green-900 mb-4 flex items-center gap-2">
-                                      <FileText size={20} /> Free Notes Collection ({syllabusMode})
+                                      <FileText size={20} /> Additional Free Notes ({syllabusMode})
                                   </h4>
 
                                   <div className="space-y-3 mb-4">
@@ -4262,10 +4287,33 @@ Capital of India?       Mumbai  Delhi   Kolkata Chennai 2       Delhi is the cap
                                   </button>
                               </div>
 
+                              {/* PRIMARY PREMIUM NOTE (MAIN) */}
+                              <div className="bg-purple-50 p-4 rounded-xl border border-purple-100">
+                                  <label className="block text-xs font-bold text-purple-800 uppercase mb-1">Primary Premium PDF Link ({syllabusMode})</label>
+                                  <div className="flex items-center bg-white border border-purple-200 rounded-xl overflow-hidden mb-2">
+                                      <div className="bg-purple-50 p-3"><Link size={16} className="text-purple-600" /></div>
+                                      <input
+                                          type="text"
+                                          value={editConfig[getModeField('pdfLink').replace('Link', 'PremiumLink') as keyof ContentConfig] || editConfig.premiumLink || ''}
+                                          onChange={e => setEditConfig({...editConfig, premiumLink: e.target.value})}
+                                          className="flex-1 p-3 outline-none text-sm"
+                                          placeholder="https://... (Shared Link)"
+                                      />
+                                  </div>
+
+                                  <label className="block text-[10px] font-bold text-purple-700 uppercase mb-1 mt-3">OR Paste Primary Premium Text</label>
+                                  <textarea
+                                      value={editConfig[getModeField('premiumNotesHtml') as keyof ContentConfig] || ''}
+                                      onChange={e => setEditConfig({...editConfig, [getModeField('premiumNotesHtml')]: e.target.value})}
+                                      className="w-full p-3 border border-purple-200 rounded-xl text-sm h-32 focus:ring-2 focus:ring-purple-500 outline-none"
+                                      placeholder={`Paste PREMIUM notes here...`}
+                                  />
+                              </div>
+
                               {/* UNLIMITED PREMIUM NOTES MANAGER */}
                               <div className="bg-purple-50 p-4 rounded-xl border border-purple-200">
                                   <h4 className="font-bold text-purple-900 mb-4 flex items-center gap-2">
-                                      <Crown size={20} /> Premium Notes Collection ({syllabusMode})
+                                      <Crown size={20} /> Additional Premium Notes ({syllabusMode})
                                   </h4>
 
                                   <div className="space-y-3 mb-4">
