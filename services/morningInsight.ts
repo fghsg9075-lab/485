@@ -34,7 +34,8 @@ export const generateMorningInsight = async (logs: UniversalAnalysisLog[], setti
       "wisdom": "A short motivational quote or deep fact related to study patterns.",
       "commonTrap": "Identify one subject/topic students struggled with most.",
       "proTip": "One specific actionable tip to improve.",
-      "motivation": "One punchy line to start the day."
+      "motivation": "One punchy line to start the day.",
+      "weakTopicFocus": "Based on scores < 50%, suggest ONE specific topic to revise today (e.g. 'Go and revise Trigonometry')."
     }
     `;
 

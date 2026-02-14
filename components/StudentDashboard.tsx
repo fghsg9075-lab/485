@@ -11,7 +11,7 @@ import { generateMorningInsight } from '../services/morningInsight';
 import { RedeemSection } from './RedeemSection';
 import { PrizeList } from './PrizeList';
 import { Store } from './Store';
-import { Layout, Gift, Sparkles, Megaphone, Lock, BookOpen, AlertCircle, Edit, Settings, Play, Pause, RotateCcw, MessageCircle, Gamepad2, Timer, CreditCard, Send, CheckCircle, Mail, X, Ban, Smartphone, Trophy, ShoppingBag, ArrowRight, Video, Youtube, Home, User as UserIcon, Book, BookOpenText, List, BarChart3, Award, Bell, Headphones, LifeBuoy, WifiOff, Zap, Star, Crown, History, ListChecks, Rocket, Ticket, TrendingUp, BrainCircuit, FileText, CheckSquare, Menu, LayoutGrid, Compass, User as UserIconOutline, MessageSquare, Bot } from 'lucide-react';
+import { Layout, Gift, Sparkles, Megaphone, Lock, BookOpen, AlertCircle, Edit, Settings, Play, Pause, RotateCcw, MessageCircle, Gamepad2, Timer, CreditCard, Send, CheckCircle, Mail, X, Ban, Smartphone, Trophy, ShoppingBag, ArrowRight, Video, Youtube, Home, User as UserIcon, Book, BookOpenText, List, BarChart3, Award, Bell, Headphones, LifeBuoy, WifiOff, Zap, Star, Crown, History, ListChecks, Rocket, Ticket, TrendingUp, BrainCircuit, FileText, CheckSquare, Menu, LayoutGrid, Compass, User as UserIconOutline, MessageSquare, Bot, HelpCircle } from 'lucide-react';
 import { SubjectSelection } from './SubjectSelection';
 import { BannerCarousel } from './BannerCarousel';
 import { ChapterSelection } from './ChapterSelection'; // Imported for Video Flow
@@ -39,6 +39,7 @@ import { SubscriptionHistory } from './SubscriptionHistory';
 import { MonthlyMarksheet } from './MonthlyMarksheet';
 import { SearchResult } from '../utils/syllabusSearch';
 import { AiDeepAnalysis } from './AiDeepAnalysis';
+import { RevisionHub } from './RevisionHub'; // NEW
 import { CustomBloggerPage } from './CustomBloggerPage';
 import { ReferralPopup } from './ReferralPopup';
 import { StudentAiAssistant } from './StudentAiAssistant';
@@ -1034,16 +1035,50 @@ export const StudentDashboard: React.FC<Props> = ({ user, dailyStudySeconds, onS
                     />
                 </DashboardSectionWrapper>
 
-                {/* STUDY TIMER */}
+                {/* STUDY TIMER & MYSTERY REVISION */}
                 <DashboardSectionWrapper id="section_timer" label="Study Goal" settings={settings} isLayoutEditing={isLayoutEditing} onToggleVisibility={toggleLayoutVisibility}>
-                    <StudyGoalTimer
-                        dailyStudySeconds={dailyStudySeconds}
-                        targetSeconds={dailyTargetSeconds}
-                        onSetTarget={(s) => {
-                            setDailyTargetSeconds(s);
-                            localStorage.setItem(`nst_goal_${user.id}`, (s / 3600).toString());
-                        }}
-                    />
+                    <div className="relative">
+                        <StudyGoalTimer
+                            dailyStudySeconds={dailyStudySeconds}
+                            targetSeconds={dailyTargetSeconds}
+                            onSetTarget={(s) => {
+                                setDailyTargetSeconds(s);
+                                localStorage.setItem(`nst_goal_${user.id}`, (s / 3600).toString());
+                            }}
+                        />
+
+                        {/* MYSTERY REVISION BUTTON (Weak Topic Shortcut) */}
+                        {(() => {
+                            // Check for Weak Topics due today
+                            const weakTopics = (user.mcqHistory || [])
+                                .filter(h => (h.score / h.totalQuestions) < 0.5)
+                                .map(h => h.chapterTitle || 'Topic');
+                            const uniqueWeak = [...new Set(weakTopics)];
+                            const topicName = uniqueWeak[0]; // Get first topic name
+
+                            if (uniqueWeak.length > 0) {
+                                return (
+                                    <button
+                                        onClick={() => {
+                                            onTabChange('REVISION');
+                                            showAlert(`🎯 Focusing on: ${topicName}. Go to Revision Hub!`, "INFO");
+                                        }}
+                                        className="absolute -top-2 right-4 bg-slate-900 text-white px-3 py-1.5 rounded-full shadow-lg border-2 border-red-500 animate-in slide-in-from-right flex items-center gap-2 group z-10"
+                                        title="Mystery Revision Due!"
+                                    >
+                                        <div className="relative">
+                                            <HelpCircle size={16} className="text-yellow-400" />
+                                            <div className="absolute -top-1 -right-1 w-2 h-2 bg-red-600 rounded-full border border-white animate-pulse"></div>
+                                        </div>
+                                        <span className="text-[10px] font-bold max-w-[100px] truncate">
+                                            {topicName}
+                                        </span>
+                                    </button>
+                                );
+                            }
+                            return null;
+                        })()}
+                    </div>
                 </DashboardSectionWrapper>
 
                 {/* MAIN ACTION BUTTONS */}
@@ -1499,7 +1534,11 @@ export const StudentDashboard: React.FC<Props> = ({ user, dailyStudySeconds, onS
                         </div>
 
                         <button onClick={() => setEditMode(true)} className="w-full bg-slate-800 text-white py-3 rounded-xl font-bold hover:bg-slate-900">✏️ Edit Profile</button>
-                        <button onClick={() => {localStorage.removeItem('nst_current_user'); window.location.reload();}} className="w-full bg-red-500 text-white py-3 rounded-xl font-bold hover:bg-red-600">🚪 Logout</button>
+                        <button onClick={() => {
+                            handleUserUpdate(user); // Force sync before logout
+                            localStorage.removeItem('nst_current_user');
+                            window.location.reload();
+                        }} className="w-full bg-red-500 text-white py-3 rounded-xl font-bold hover:bg-red-600">🚪 Logout</button>
                     </div>
                 </div>
       );
@@ -1764,9 +1803,9 @@ export const StudentDashboard: React.FC<Props> = ({ user, dailyStudySeconds, onS
                     <span className="text-[10px] font-bold mt-1">Home</span>
                 </button>
                 
-                <button onClick={() => onTabChange('AI_STUDIO')} className={`flex flex-col items-center justify-center w-full h-full ${activeTab === 'AI_STUDIO' ? 'text-blue-600' : 'text-slate-400'}`}>
-                    <Sparkles size={24} fill={activeTab === 'AI_STUDIO' ? "currentColor" : "none"} />
-                    <span className="text-[10px] font-bold mt-1">AI Studio</span>
+                <button onClick={() => onTabChange('REVISION' as any)} className={`flex flex-col items-center justify-center w-full h-full ${activeTab === 'REVISION' ? 'text-blue-600' : 'text-slate-400'}`}>
+                    <BrainCircuit size={24} fill={activeTab === 'REVISION' ? "currentColor" : "none"} />
+                    <span className="text-[10px] font-bold mt-1">Revision</span>
                 </button>
 
                 <button onClick={() => onTabChange('HISTORY')} className={`flex flex-col items-center justify-center w-full h-full ${activeTab === 'HISTORY' ? 'text-blue-600' : 'text-slate-400'}`}>
@@ -1791,6 +1830,7 @@ export const StudentDashboard: React.FC<Props> = ({ user, dailyStudySeconds, onS
             user={user}
             settings={settings}
             onLogout={() => {
+                handleUserUpdate(user); // Force sync before logout
                 localStorage.removeItem('nst_current_user');
                 window.location.reload();
             }}
