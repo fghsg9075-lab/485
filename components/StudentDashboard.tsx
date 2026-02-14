@@ -1117,19 +1117,29 @@ export const StudentDashboard: React.FC<Props> = ({ user, dailyStudySeconds, onS
                   user={user}
                   onTabChange={onTabChange}
                   settings={settings}
-                  onNavigateContent={(type, chapterId, topicName) => {
+                  onNavigateContent={(type, chapterId, topicName, subjectName) => {
                       // Only for PDF/Notes now
                       setTopicFilter(topicName);
 
                       if (type === 'PDF') {
                           setLoadingChapters(true);
+                          // We pass null for subject to get all chapters for the class
                           fetchChapters(user.board || 'CBSE', user.classLevel || '10', user.stream || 'Science', null, 'English').then(allChapters => {
                               const ch = allChapters.find(c => c.id === chapterId);
                               if (ch) {
                                   onTabChange('PDF');
-                                  const subjects = getSubjectsList(user.classLevel || '10', user.stream || 'Science');
-                                  if (!selectedSubject) setSelectedSubject(subjects[0]);
 
+                                  // Fix Subject Context
+                                  const subjects = getSubjectsList(user.classLevel || '10', user.stream || 'Science');
+                                  let targetSubject = selectedSubject;
+
+                                  if (subjectName) {
+                                      targetSubject = subjects.find(s => s.name === subjectName) || subjects[0];
+                                  } else if (!targetSubject) {
+                                      targetSubject = subjects[0];
+                                  }
+
+                                  setSelectedSubject(targetSubject);
                                   setSelectedChapter(ch);
                                   setContentViewStep('PLAYER');
                                   setFullScreen(true);
@@ -1151,16 +1161,25 @@ export const StudentDashboard: React.FC<Props> = ({ user, dailyStudySeconds, onS
                   user={user}
                   onTabChange={onTabChange}
                   settings={settings}
-                  onNavigateContent={(type, chapterId) => {
+                  onNavigateContent={(type, chapterId, topicName, subjectName) => {
                       // Navigate to MCQ Player
                       setLoadingChapters(true);
                       fetchChapters(user.board || 'CBSE', user.classLevel || '10', user.stream || 'Science', null, 'English').then(allChapters => {
                           const ch = allChapters.find(c => c.id === chapterId);
                           if (ch) {
                               onTabChange('MCQ');
-                              const subjects = getSubjectsList(user.classLevel || '10', user.stream || 'Science');
-                              if (!selectedSubject) setSelectedSubject(subjects[0]);
 
+                              // Fix Subject Context
+                              const subjects = getSubjectsList(user.classLevel || '10', user.stream || 'Science');
+                              let targetSubject = selectedSubject;
+
+                              if (subjectName) {
+                                  targetSubject = subjects.find(s => s.name === subjectName) || subjects[0];
+                              } else if (!targetSubject) {
+                                  targetSubject = subjects[0];
+                              }
+
+                              setSelectedSubject(targetSubject);
                               setSelectedChapter(ch);
                               setContentViewStep('PLAYER');
                               setFullScreen(true);
