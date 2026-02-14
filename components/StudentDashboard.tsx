@@ -166,6 +166,7 @@ export const StudentDashboard: React.FC<Props> = ({ user, dailyStudySeconds, onS
   const [syllabusMode, setSyllabusMode] = useState<'SCHOOL' | 'COMPETITION'>('SCHOOL');
   const [currentAudioTrack, setCurrentAudioTrack] = useState<{url: string, title: string} | null>(null);
   const [universalNotes, setUniversalNotes] = useState<any[]>([]);
+  const [topicFilter, setTopicFilter] = useState<string | undefined>(undefined); // NEW: Topic Filter
 
   useEffect(() => {
       getChapterData('nst_universal_notes').then(data => {
@@ -912,17 +913,18 @@ export const StudentDashboard: React.FC<Props> = ({ user, dailyStudySeconds, onS
       const handlePlayerBack = () => {
           setContentViewStep('CHAPTERS');
           setFullScreen(false);
+          setTopicFilter(undefined); // Clear filter on back
       };
 
       if (contentViewStep === 'PLAYER' && selectedChapter && selectedSubject) {
           if (type === 'VIDEO') {
             return <VideoPlaylistView chapter={selectedChapter} subject={selectedSubject} user={user} board={user.board || 'CBSE'} classLevel={user.classLevel || '10'} stream={user.stream || null} onBack={handlePlayerBack} onUpdateUser={handleUserUpdate} settings={settings} initialSyllabusMode={syllabusMode} />;
           } else if (type === 'PDF') {
-            return <PdfView chapter={selectedChapter} subject={selectedSubject} user={user} board={user.board || 'CBSE'} classLevel={user.classLevel || '10'} stream={user.stream || null} onBack={handlePlayerBack} onUpdateUser={handleUserUpdate} settings={settings} initialSyllabusMode={syllabusMode} directResource={(selectedChapter as any).directResource} />;
+            return <PdfView chapter={selectedChapter} subject={selectedSubject} user={user} board={user.board || 'CBSE'} classLevel={user.classLevel || '10'} stream={user.stream || null} onBack={handlePlayerBack} onUpdateUser={handleUserUpdate} settings={settings} initialSyllabusMode={syllabusMode} directResource={(selectedChapter as any).directResource} topicFilter={topicFilter} />;
           } else if (type === 'AUDIO') {
             return <AudioPlaylistView chapter={selectedChapter} subject={selectedSubject} user={user} board={user.board || 'CBSE'} classLevel={user.classLevel || '10'} stream={user.stream || null} onBack={handlePlayerBack} onUpdateUser={handleUserUpdate} settings={settings} onPlayAudio={setCurrentAudioTrack} initialSyllabusMode={syllabusMode} />;
           } else {
-            return <McqView chapter={selectedChapter} subject={selectedSubject} user={user} board={user.board || 'CBSE'} classLevel={user.classLevel || '10'} stream={user.stream || null} onBack={handlePlayerBack} onUpdateUser={handleUserUpdate} settings={settings} />;
+            return <McqView chapter={selectedChapter} subject={selectedSubject} user={user} board={user.board || 'CBSE'} classLevel={user.classLevel || '10'} stream={user.stream || null} onBack={handlePlayerBack} onUpdateUser={handleUserUpdate} settings={settings} topicFilter={topicFilter} />;
           }
       }
 
@@ -1114,25 +1116,25 @@ export const StudentDashboard: React.FC<Props> = ({ user, dailyStudySeconds, onS
                   user={user}
                   onTabChange={onTabChange}
                   settings={settings}
-                  onNavigateContent={(type, chapterId) => {
+                  onNavigateContent={(type, chapterId, topicName) => {
+                      // NEW: Handle Topic Navigation
+                      setTopicFilter(topicName);
+
                       if (type === 'PDF') {
                           // Standard PDF Flow: Select Chapter -> View
-                          // We need to fetch the chapter if not loaded, or simpler:
-                          // just call handleContentChapterSelect if we can reconstruct the chapter object.
-                          // However, we only have chapterId.
                           setLoadingChapters(true);
                           fetchChapters(user.board || 'CBSE', user.classLevel || '10', user.stream || 'Science', null, 'English').then(allChapters => {
                               const ch = allChapters.find(c => c.id === chapterId);
                               if (ch) {
                                   onTabChange('PDF');
-                                  // We might need to infer subject. But for now, let's just set the chapter.
-                                  // NOTE: selectedSubject is required for PdfView. We might need to guess it or fetch it.
-                                  // Since we don't have subjectId easily here (unless we pass it from RevisionHub),
-                                  // we will try to find subject from our known subject list.
+                                  // Infer subject if possible, or use generic
                                   const subjects = getSubjectsList(user.classLevel || '10', user.stream || 'Science');
-                                  // This is imperfect without subjectID.
-                                  // Better Approach: RevisionHub should pass subjectId if available in mcqHistory.
-                                  // Assuming handleContentChapterSelect handles the view transition.
+                                  // Need to set selectedSubject for views to work.
+                                  // Since RevisionHub might not pass subject, we default to first or find match if chapter has subjectID (it doesn't usually).
+                                  // For now, use the first subject or 'General'.
+                                  // IMPROVEMENT: Pass subjectId from RevisionHub.
+                                  if (!selectedSubject) setSelectedSubject(subjects[0]);
+
                                   setSelectedChapter(ch);
                                   setContentViewStep('PLAYER');
                                   setFullScreen(true);
@@ -1148,6 +1150,10 @@ export const StudentDashboard: React.FC<Props> = ({ user, dailyStudySeconds, onS
                               const ch = allChapters.find(c => c.id === chapterId);
                               if (ch) {
                                   onTabChange('MCQ');
+                                  // Infer subject
+                                  const subjects = getSubjectsList(user.classLevel || '10', user.stream || 'Science');
+                                  if (!selectedSubject) setSelectedSubject(subjects[0]);
+
                                   setSelectedChapter(ch);
                                   setContentViewStep('PLAYER');
                                   setFullScreen(true);

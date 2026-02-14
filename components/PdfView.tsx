@@ -26,10 +26,11 @@ interface Props {
   settings?: SystemSettings;
   initialSyllabusMode?: 'SCHOOL' | 'COMPETITION';
   directResource?: { url: string, access: string }; // NEW: For Universal Notes
+  topicFilter?: string; // NEW: Filter view by topic
 }
 
 export const PdfView: React.FC<Props> = ({ 
-  chapter, subject, user, board, classLevel, stream, onBack, onUpdateUser, settings, initialSyllabusMode, directResource
+  chapter, subject, user, board, classLevel, stream, onBack, onUpdateUser, settings, initialSyllabusMode, directResource, topicFilter
 }) => {
   const [contentData, setContentData] = useState<any>({});
   const [loading, setLoading] = useState(true);
@@ -788,12 +789,23 @@ export const PdfView: React.FC<Props> = ({
                            if (!grouped[t]) grouped[t] = [];
                            grouped[t].push(n);
                        });
-                       const topics = Object.keys(grouped);
+
+                       let topics = Object.keys(grouped);
+
+                       // Apply Filter
+                       if (topicFilter) {
+                           topics = topics.filter(t => t === topicFilter);
+                           if (topics.length === 0) return (
+                               <div className="mt-6 p-4 text-center text-slate-400 text-sm font-bold bg-slate-100 rounded-xl">
+                                   No notes found for topic: {topicFilter}
+                               </div>
+                           );
+                       }
 
                        return (
                            <div className="space-y-4 mt-6">
                                <h4 className="font-bold text-slate-800 flex items-center gap-2 px-1">
-                                   <FileText size={18} className="text-orange-600" /> Topic Notes
+                                   <FileText size={18} className="text-orange-600" /> {topicFilter ? `${topicFilter} Notes` : 'Topic Notes'}
                                </h4>
                                <div className="space-y-3">
                                    {topics.map((topic, idx) => (
