@@ -259,6 +259,38 @@ export const PdfView: React.FC<Props> = ({
       }
   };
 
+  const handleNoteItemClick = (note: any, isPremium: boolean) => {
+      const targetContent = note.type === 'HTML' ? note.content : note.url;
+      if (!targetContent) return setAlertConfig({isOpen: true, message: "Content not available."});
+
+      const price = isPremium ? (settings?.defaultPdfCost ?? 5) : 0;
+
+      if (user.role === 'ADMIN') {
+          triggerInterstitial(targetContent);
+          return;
+      }
+
+      if (!isPremium) {
+           triggerInterstitial(targetContent);
+           return;
+      }
+
+      // Premium Checks
+      const isSubscribed = user.isPremium && user.subscriptionEndDate && new Date(user.subscriptionEndDate) > new Date();
+      if (isSubscribed) {
+           if (user.subscriptionLevel === 'ULTRA' || user.subscriptionLevel === 'BASIC') {
+                triggerInterstitial(targetContent);
+                return;
+           }
+      }
+
+      if (user.isAutoDeductEnabled) {
+          processPaymentAndOpen(targetContent, price);
+      } else {
+          setPendingPdf({ type: 'PREMIUM', price, link: targetContent });
+      }
+  };
+
   const handleModuleClick = (mod: HtmlModule) => {
       // Check Access
       let hasAccess = false;
@@ -568,90 +600,175 @@ export const PdfView: React.FC<Props> = ({
                </div>
            ) : (
                <>
-                   {/* FREE NOTES - GREEN BADGE */}
-                   <div className="relative group">
-                       <button 
-                           onClick={() => handlePdfClick('FREE')}
-                           className="w-full p-5 rounded-2xl border-2 border-green-100 bg-white hover:bg-green-50 flex items-center gap-4 transition-all relative overflow-hidden"
-                       >
-                           {/* BADGE */}
-                           <div className="absolute top-3 right-3 flex items-center gap-1 bg-green-100 text-green-700 px-2 py-0.5 rounded-full text-[10px] font-bold">
-                               <CheckCircle size={10} /> FREE
-                           </div>
+                   {/* UNLIMITED FREE NOTES SECTION */}
+                   {(() => {
+                       const freeList = syllabusMode === 'SCHOOL'
+                           ? (contentData.schoolFreeNotesList || [])
+                           : (contentData.competitionFreeNotesList || []);
 
-                           <div className="w-12 h-12 rounded-full bg-green-50 text-green-600 flex items-center justify-center border border-green-100">
-                               <FileText size={24} />
-                           </div>
-                           <div className="flex-1 text-left">
-                               <h4 className="font-bold text-slate-800">Free Notes</h4>
-                               <p className="text-xs text-slate-500">Standard Quality PDF</p>
-                           </div>
-                           <div className="w-8 h-8 rounded-full bg-green-500 text-white flex items-center justify-center">
-                               <ArrowLeft size={16} className="rotate-180" />
-                           </div>
-                       </button>
-                       {/* INFO BUTTON - FREE */}
-                       {(settings?.contentInfo?.freeNotes?.enabled ?? DEFAULT_CONTENT_INFO_CONFIG.freeNotes.enabled) && (
-                           <button 
-                               onClick={(e) => {
-                                   e.stopPropagation();
-                                   setInfoPopup({
-                                       isOpen: true, 
-                                       config: settings?.contentInfo?.freeNotes || DEFAULT_CONTENT_INFO_CONFIG.freeNotes,
-                                       type: 'FREE'
-                                   });
-                               }}
-                               className="absolute bottom-2 right-14 z-10 p-2 text-green-300 hover:text-green-600 transition-colors"
-                           >
-                               <HelpCircle size={18} />
-                           </button>
-                       )}
-                   </div>
+                       const legacyLink = syllabusMode === 'SCHOOL'
+                           ? (contentData.schoolPdfLink || contentData.freeLink)
+                           : contentData.competitionPdfLink;
+                       const legacyHtml = syllabusMode === 'SCHOOL'
+                           ? (contentData.schoolFreeNotesHtml || contentData.freeNotesHtml)
+                           : contentData.competitionFreeNotesHtml;
 
-                   {/* PREMIUM NOTES - GOLD BADGE */}
-                   <div className="relative group">
-                       <button 
-                           onClick={() => handlePdfClick('PREMIUM')}
-                           className="w-full p-5 rounded-2xl border-2 border-yellow-200 bg-gradient-to-r from-yellow-50 to-white hover:border-yellow-300 flex items-center gap-4 transition-all relative overflow-hidden"
-                       >
-                           {/* BADGE */}
-                           <div className="absolute top-3 right-3 flex items-center gap-1 bg-yellow-100 text-yellow-800 px-2 py-0.5 rounded-full text-[10px] font-bold border border-yellow-200">
-                               <Crown size={10} /> PREMIUM
-                           </div>
+                       const hasLegacy = legacyLink || legacyHtml;
+                       const showLegacy = hasLegacy && freeList.length === 0;
 
-                           <div className="w-12 h-12 rounded-full bg-yellow-100 text-yellow-600 flex items-center justify-center border border-yellow-200">
-                               <Star size={24} fill="currentColor" />
+                       const label = contentData.freeNotesLabel || "Free Notes";
+
+                       return (
+                           <div className="space-y-3">
+                               {freeList.length > 0 && <h4 className="font-bold text-slate-700 flex items-center gap-2 px-1"><CheckCircle size={18} className="text-green-600"/> {label}</h4>}
+
+                               {showLegacy && (
+                                   <div className="relative group">
+                                       <button
+                                           onClick={() => handlePdfClick('FREE')}
+                                           className="w-full p-5 rounded-2xl border-2 border-green-100 bg-white hover:bg-green-50 flex items-center gap-4 transition-all relative overflow-hidden"
+                                       >
+                                           <div className="absolute top-3 right-3 flex items-center gap-1 bg-green-100 text-green-700 px-2 py-0.5 rounded-full text-[10px] font-bold">
+                                               <CheckCircle size={10} /> FREE
+                                           </div>
+                                           <div className="w-12 h-12 rounded-full bg-green-50 text-green-600 flex items-center justify-center border border-green-100">
+                                               <FileText size={24} />
+                                           </div>
+                                           <div className="flex-1 text-left">
+                                               <h4 className="font-bold text-slate-800">{label}</h4>
+                                               <p className="text-xs text-slate-500">Standard Quality PDF</p>
+                                           </div>
+                                           <div className="w-8 h-8 rounded-full bg-green-500 text-white flex items-center justify-center">
+                                               <ArrowLeft size={16} className="rotate-180" />
+                                           </div>
+                                       </button>
+                                       {(settings?.contentInfo?.freeNotes?.enabled ?? DEFAULT_CONTENT_INFO_CONFIG.freeNotes.enabled) && (
+                                           <button
+                                               onClick={(e) => {
+                                                   e.stopPropagation();
+                                                   setInfoPopup({
+                                                       isOpen: true,
+                                                       config: settings?.contentInfo?.freeNotes || DEFAULT_CONTENT_INFO_CONFIG.freeNotes,
+                                                       type: 'FREE'
+                                                   });
+                                               }}
+                                               className="absolute bottom-2 right-14 z-10 p-2 text-green-300 hover:text-green-600 transition-colors"
+                                           >
+                                               <HelpCircle size={18} />
+                                           </button>
+                                       )}
+                                   </div>
+                               )}
+
+                               {freeList.map((note: any, idx: number) => (
+                                   <button
+                                       key={`free-${idx}`}
+                                       onClick={() => handleNoteItemClick(note, false)}
+                                       className="w-full p-4 rounded-xl border border-green-100 bg-white hover:bg-green-50 flex items-center gap-3 transition-all relative group"
+                                   >
+                                       <div className="w-10 h-10 rounded-full bg-green-100 text-green-600 flex items-center justify-center font-bold text-xs">
+                                           {idx + 1}
+                                       </div>
+                                       <div className="flex-1 text-left">
+                                           <h5 className="font-bold text-slate-800 text-sm">{note.title || `Note ${idx + 1}`}</h5>
+                                           <span className="text-[10px] font-bold text-green-600 bg-green-50 px-2 py-0.5 rounded border border-green-200 uppercase">{note.type || 'PDF'}</span>
+                                       </div>
+                                       <ArrowLeft size={16} className="text-green-400 rotate-180" />
+                                   </button>
+                               ))}
                            </div>
-                           <div className="flex-1 text-left">
-                               <h4 className="font-bold text-slate-800">Premium Notes</h4>
-                               <p className="text-xs text-slate-500">High Quality / Handwriting</p>
+                       );
+                   })()}
+
+                   {/* UNLIMITED PREMIUM NOTES SECTION */}
+                   {(() => {
+                       const premList = syllabusMode === 'SCHOOL'
+                           ? (contentData.schoolPremiumNotesList || [])
+                           : (contentData.competitionPremiumNotesList || []);
+
+                       const legacyLink = syllabusMode === 'SCHOOL'
+                           ? (contentData.schoolPdfPremiumLink || contentData.premiumLink)
+                           : contentData.competitionPdfPremiumLink;
+                       const legacyHtml = syllabusMode === 'SCHOOL'
+                           ? (contentData.schoolPremiumNotesHtml || contentData.premiumNotesHtml)
+                           : contentData.competitionPremiumNotesHtml;
+
+                       const hasLegacy = legacyLink || legacyHtml;
+                       const showLegacy = hasLegacy && premList.length === 0;
+
+                       return (
+                           <div className="space-y-3 mt-6">
+                               {(premList.length > 0 || showLegacy) && <h4 className="font-bold text-slate-700 flex items-center gap-2 px-1"><Crown size={18} className="text-yellow-500"/> Premium Notes</h4>}
+
+                               {showLegacy && (
+                                   <div className="relative group">
+                                       <button
+                                           onClick={() => handlePdfClick('PREMIUM')}
+                                           className="w-full p-5 rounded-2xl border-2 border-yellow-200 bg-gradient-to-r from-yellow-50 to-white hover:border-yellow-300 flex items-center gap-4 transition-all relative overflow-hidden"
+                                       >
+                                           <div className="absolute top-3 right-3 flex items-center gap-1 bg-yellow-100 text-yellow-800 px-2 py-0.5 rounded-full text-[10px] font-bold border border-yellow-200">
+                                               <Crown size={10} /> PREMIUM
+                                           </div>
+                                           <div className="w-12 h-12 rounded-full bg-yellow-100 text-yellow-600 flex items-center justify-center border border-yellow-200">
+                                               <Star size={24} fill="currentColor" />
+                                           </div>
+                                           <div className="flex-1 text-left">
+                                               <h4 className="font-bold text-slate-800">Premium Notes</h4>
+                                               <p className="text-xs text-slate-500">High Quality / Handwriting</p>
+                                           </div>
+                                           <div className="flex flex-col items-end">
+                                               <span className="text-xs font-black text-yellow-700">
+                                                   {contentData?.price !== undefined ? contentData.price : (settings?.defaultPdfCost ?? 5)} CR
+                                               </span>
+                                               <span className="text-[10px] text-slate-400">Unlock</span>
+                                           </div>
+                                       </button>
+                                       {(settings?.contentInfo?.premiumNotes?.enabled ?? DEFAULT_CONTENT_INFO_CONFIG.premiumNotes.enabled) && (
+                                           <button
+                                               onClick={(e) => {
+                                                   e.stopPropagation();
+                                                   setInfoPopup({
+                                                       isOpen: true,
+                                                       config: settings?.contentInfo?.premiumNotes || DEFAULT_CONTENT_INFO_CONFIG.premiumNotes,
+                                                       type: 'PREMIUM'
+                                                   });
+                                               }}
+                                               className="absolute bottom-2 right-16 z-10 p-2 text-yellow-300 hover:text-yellow-600 transition-colors"
+                                           >
+                                               <HelpCircle size={18} />
+                                           </button>
+                                       )}
+                                   </div>
+                               )}
+
+                               {premList.map((note: any, idx: number) => (
+                                   <button
+                                       key={`prem-${idx}`}
+                                       onClick={() => handleNoteItemClick(note, true)}
+                                       className="w-full p-4 rounded-xl border-2 border-yellow-100 bg-white hover:border-yellow-300 flex items-center gap-3 transition-all relative group"
+                                   >
+                                       <div className="w-10 h-10 rounded-full bg-yellow-100 text-yellow-600 flex items-center justify-center font-bold text-xs border border-yellow-200">
+                                           {idx + 1}
+                                       </div>
+                                       <div className="flex-1 text-left">
+                                           <h5 className="font-bold text-slate-800 text-sm">{note.title || `Premium Note ${idx + 1}`}</h5>
+                                           <div className="flex gap-2 mt-1">
+                                               <span className="text-[10px] font-bold text-purple-600 bg-purple-50 px-2 py-0.5 rounded border border-purple-200 uppercase">{note.type || 'PDF'}</span>
+                                               <span className="text-[10px] font-bold text-yellow-700 bg-yellow-50 px-2 py-0.5 rounded border border-yellow-200 flex items-center gap-1">
+                                                   <Lock size={8} /> Locked
+                                               </span>
+                                           </div>
+                                       </div>
+                                       <div className="flex flex-col items-end">
+                                            <span className="text-xs font-black text-yellow-600">
+                                                {settings?.defaultPdfCost ?? 5} CR
+                                            </span>
+                                       </div>
+                                   </button>
+                               ))}
                            </div>
-                           
-                           {/* PRICE or LOCK */}
-                           <div className="flex flex-col items-end">
-                               <span className="text-xs font-black text-yellow-700">
-                                   {contentData?.price !== undefined ? contentData.price : (settings?.defaultPdfCost ?? 5)} CR
-                               </span>
-                               <span className="text-[10px] text-slate-400">Unlock</span>
-                           </div>
-                       </button>
-                       {/* INFO BUTTON - PREMIUM */}
-                       {(settings?.contentInfo?.premiumNotes?.enabled ?? DEFAULT_CONTENT_INFO_CONFIG.premiumNotes.enabled) && (
-                           <button 
-                               onClick={(e) => {
-                                   e.stopPropagation();
-                                   setInfoPopup({
-                                       isOpen: true, 
-                                       config: settings?.contentInfo?.premiumNotes || DEFAULT_CONTENT_INFO_CONFIG.premiumNotes,
-                                       type: 'PREMIUM'
-                                   });
-                               }}
-                               className="absolute bottom-2 right-16 z-10 p-2 text-yellow-300 hover:text-yellow-600 transition-colors"
-                           >
-                               <HelpCircle size={18} />
-                           </button>
-                       )}
-                   </div>
+                       );
+                   })()}
 
                    {/* TOPIC NOTES SECTION */}
                    {contentData.topicNotes && contentData.topicNotes.length > 0 && (() => {
