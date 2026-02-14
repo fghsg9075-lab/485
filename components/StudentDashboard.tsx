@@ -213,7 +213,7 @@ export const StudentDashboard: React.FC<Props> = ({ user, dailyStudySeconds, onS
   // --- HEADER CONTROL ---
   useEffect(() => {
     // Force Full Screen for Home/Explore/Profile to use Custom Header
-    if (activeTab === 'HOME' || activeTab === 'EXPLORE' || activeTab === 'PROFILE' || activeTab === 'AI_STUDIO') {
+    if (activeTab === 'HOME' || activeTab === 'EXPLORE' || activeTab === 'PROFILE' || activeTab === 'AI_STUDIO' || activeTab === 'REVISION') {
         setFullScreen(true);
     } else {
         // For other tabs (content), let the content decide or default to normal
@@ -1107,7 +1107,8 @@ export const StudentDashboard: React.FC<Props> = ({ user, dailyStudySeconds, onS
       }
 
       // 2. REVISION HUB (Replaces AI Studio)
-      if (activeTab === 'REVISION') {
+      // Alias AI_STUDIO to REVISION for backward compatibility
+      if (activeTab === 'REVISION' || activeTab === 'AI_STUDIO') {
           return <RevisionHub user={user} onTabChange={onTabChange} settings={settings} />;
       }
 
