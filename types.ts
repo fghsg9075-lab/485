@@ -553,6 +553,7 @@ export interface SystemSettings {
   areTopicNotesHiddenGlobally?: boolean; // NEW: Global Topic Notes Toggle
   featureBadges?: Record<string, 'NEW' | 'UPGRADE' | 'NORMAL'>; // NEW: Feature Badges
   storeFeatures?: { basic: string[], ultra: string[] }; // NEW: Dynamic Store Features
+  isAutoTtsEnabled?: boolean; // NEW: Global Auto TTS Toggle
 }
 
 export interface ContentInfoItem {
@@ -924,7 +925,7 @@ export interface StudentTestAttempt {
   answers: Record<number, number>; // question index -> selected answer index
 }
 
-export type StudentTab = 'HOME' | 'EXPLORE' | 'COURSES' | 'ROUTINE' | 'HISTORY' | 'REDEEM' | 'PREMIUM' | 'GAME' | 'WEEKLY_TEST' | 'PROFILE' | 'LEADERBOARD' | 'STORE' | 'VIDEO' | 'PDF' | 'MCQ' | 'ANALYTICS' | 'PRIZES' | 'REWARDS' | 'UPDATES' | 'SUB_HISTORY' | 'AUDIO' | 'AI_HISTORY' | 'DEEP_ANALYSIS' | 'CUSTOM_PAGE' | 'AI_CHAT';
+export type StudentTab = 'HOME' | 'EXPLORE' | 'COURSES' | 'ROUTINE' | 'HISTORY' | 'REDEEM' | 'PREMIUM' | 'GAME' | 'WEEKLY_TEST' | 'PROFILE' | 'LEADERBOARD' | 'STORE' | 'VIDEO' | 'PDF' | 'MCQ' | 'ANALYTICS' | 'PRIZES' | 'REWARDS' | 'UPDATES' | 'SUB_HISTORY' | 'AUDIO' | 'AI_HISTORY' | 'DEEP_ANALYSIS' | 'CUSTOM_PAGE' | 'AI_CHAT' | 'REVISION';
 
 export type Language = 'English' | 'Hindi';
 

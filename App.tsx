@@ -815,6 +815,12 @@ const App: React.FC = () => {
       localStorage.setItem('nst_system_settings', JSON.stringify(newSettings));
   };
 
+  // Provide a global toggle handler for TTS
+  const handleToggleAutoTts = (enabled: boolean) => {
+      const newSettings = { ...state.settings, isAutoTtsEnabled: enabled };
+      updateSettings(newSettings);
+  };
+
   const handleAcceptTerms = () => {
       localStorage.setItem('nst_terms_accepted', 'true');
       setShowTerms(false);
@@ -1972,6 +1978,7 @@ const App: React.FC = () => {
                         settings={state.settings}
                         isStreaming={isStreaming}
                         onLaunchContent={(c: any) => handleContentGeneration(c.isPremium ? 'NOTES_PREMIUM' : 'NOTES_HTML_FREE', undefined, false, c)}
+                        onToggleAutoTts={handleToggleAutoTts}
                     />
                 )}
             </>

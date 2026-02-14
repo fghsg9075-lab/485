@@ -27,6 +27,7 @@ interface Props {
   settings?: SystemSettings; // New Prop for Pricing
   isStreaming?: boolean; // Support for streaming content
   onLaunchContent?: (content: any) => void;
+  onToggleAutoTts?: (enabled: boolean) => void;
 }
 
 export const LessonView: React.FC<Props> = ({ 
@@ -41,7 +42,8 @@ export const LessonView: React.FC<Props> = ({
   onUpdateUser,
   settings,
   isStreaming = false,
-  onLaunchContent
+  onLaunchContent,
+  onToggleAutoTts
 }) => {
   const [mcqState, setMcqState] = useState<Record<number, number | null>>({});
   const [timeSpentPerQuestion, setTimeSpentPerQuestion] = useState<Record<number, number>>({});
@@ -57,8 +59,14 @@ export const LessonView: React.FC<Props> = ({
 
   const [showQuestionDrawer, setShowQuestionDrawer] = useState(false);
   const [batchIndex, setBatchIndex] = useState(0);
-  const [autoReadEnabled, setAutoReadEnabled] = useState(true);
+  const [autoReadEnabled, setAutoReadEnabled] = useState(settings?.isAutoTtsEnabled || false);
   const BATCH_SIZE = 1;
+
+  useEffect(() => {
+      if (settings?.isAutoTtsEnabled !== undefined) {
+          setAutoReadEnabled(settings.isAutoTtsEnabled);
+      }
+  }, [settings?.isAutoTtsEnabled]);
 
   // LANGUAGE AUTO-SELECT
   useEffect(() => {
@@ -115,29 +123,16 @@ export const LessonView: React.FC<Props> = ({
       return () => clearInterval(interval);
       }, [showResults, showSubmitModal, showResumePrompt, batchIndex, content]);
 
-  // AUTO READ MCQ
-  useEffect(() => {
-      if (
-          !showResults &&
-          !showSubmitModal &&
-          !showResumePrompt &&
-          content?.mcqData &&
-          autoReadEnabled &&
-          batchIndex < (localMcqData.length || (content.mcqData || []).length)
-      ) {
-          const displayData = localMcqData.length > 0 ? localMcqData : (content.mcqData || []);
-          const q = displayData[batchIndex];
-          if (q) {
-              // Wait a bit for transition
-              setTimeout(() => {
-                  const text = `${q.question}. Options: ${q.options.join(', ')}`;
-                  startSpeaking(text);
-              }, 500);
-          }
-      } else {
-          window.speechSynthesis.cancel();
-      }
-  }, [batchIndex, showResults, showSubmitModal, showResumePrompt, autoReadEnabled]);
+  // AUTO READ MCQ (Handled via SpeakButton prop logic now, but keeping trigger logic if needed)
+  // We will utilize SpeakButton with autoPlay prop instead of direct speech logic here
+  // to unify controls. However, SpeakButton renders a button.
+  // We can render a hidden SpeakButton that auto-plays or just use a dedicated effect.
+  // The user requested "Jahan bhi tts hai wo automatically bolega".
+  // So the existing SpeakButton component handles it if we pass `settings`.
+  // But for MCQ Question transition, we need to re-trigger.
+
+  // Actually, let's keep it simple: Render a SpeakButton for the question with `autoPlay={autoReadEnabled}`.
+  // This will handle the lifecycle.
 
   // ANTI-CHEAT (Exam Mode)
   useEffect(() => {
@@ -834,14 +829,16 @@ export const LessonView: React.FC<Props> = ({
                        )}
                    </div>
                    <div className="flex items-center gap-3">
-                       {/* Auto Read Toggle */}
+                       {/* Auto Read Toggle (Global) */}
                        <button
                            onClick={() => {
                                const newState = !autoReadEnabled;
                                setAutoReadEnabled(newState);
+                               if (onToggleAutoTts) onToggleAutoTts(newState);
                                if (!newState) window.speechSynthesis.cancel();
                            }}
-                           className={`p-2 rounded-lg transition-all ${autoReadEnabled ? 'bg-indigo-100 text-indigo-600' : 'bg-slate-100 text-slate-400'}`}
+                           className={`p-2 rounded-lg transition-all ${autoReadEnabled ? 'bg-indigo-100 text-indigo-600 ring-2 ring-indigo-200' : 'bg-slate-100 text-slate-400'}`}
+                           title="Toggle Auto-Read"
                        >
                            {autoReadEnabled ? <Volume2 size={18} /> : <Volume2 size={18} className="opacity-50" />}
                        </button>
@@ -881,7 +878,13 @@ export const LessonView: React.FC<Props> = ({
                                        <span className="bg-blue-100 text-blue-700 w-6 h-6 rounded-full flex items-center justify-center text-xs shrink-0 font-bold mt-0.5">{idx + 1}</span>
                                        <div dangerouslySetInnerHTML={{ __html: renderMathInHtml(q.question) }} className="prose prose-sm max-w-none" />
                                    </div>
-                                   <SpeakButton text={fullQuestionText} className="shrink-0" />
+                                   <SpeakButton
+                                       text={fullQuestionText}
+                                       className="shrink-0"
+                                       settings={settings}
+                                       autoPlay={autoReadEnabled && !showResults && !showSubmitModal}
+                                       onToggleAutoTts={onToggleAutoTts}
+                                   />
                                </div>
                                <div className="space-y-2">
                                    {q.options.map((opt, oIdx) => {
