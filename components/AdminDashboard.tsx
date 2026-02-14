@@ -7597,7 +7597,6 @@ Capital of India?       Mumbai  Delhi   Kolkata Chennai 2       Delhi is the cap
               <div className="space-y-4 max-h-[60vh] overflow-y-auto">
                   {localSettings.subscriptionPlans?.map((plan, idx) => (
                       <div key={plan.id} className="bg-slate-50 p-4 rounded-xl border border-slate-200">
- fix-admin-list-ref-and-topic-notes-toggle-6480143259488591248
                           <div className="flex justify-between items-end gap-4 mb-3">
                               <div className="flex-1">
                                   <label className="text-[10px] font-bold text-slate-500 uppercase block mb-1">Plan Name</label>
@@ -7613,24 +7612,11 @@ Capital of India?       Mumbai  Delhi   Kolkata Chennai 2       Delhi is the cap
                                       placeholder="Plan Name"
                                   />
                               </div>
-
-                          <div className="flex justify-between mb-2">
-                              <input
-                                  type="text"
-                                  value={plan.name}
-                                  onChange={e => {
-                                      const updated = [...localSettings.subscriptionPlans!];
-                                      updated[idx].name = e.target.value;
-                                      setLocalSettings({...localSettings, subscriptionPlans: updated});
-                                  }}
-                                  className="font-bold text-slate-800 bg-transparent border-b border-dashed border-slate-300 focus:border-blue-500 outline-none"
-                              /
-                                  main
                               <button onClick={() => {
                                   if(!confirm("Delete this plan?")) return;
                                   const updated = localSettings.subscriptionPlans!.filter((_, i) => i !== idx);
                                   setLocalSettings({...localSettings, subscriptionPlans: updated});
-                              }} className="text-red-500 hover:text-red-700 mb-2 p-2 bg-red-50 rounded-lg"><Trash2 size={18} /></button>
+                              }} className="text-red-500 hover:text-red-700 mb-1 p-2 bg-red-50 rounded-lg"><Trash2 size={18} /></button>
                           </div>
                           
                           <div className="grid grid-cols-2 gap-3 mb-3">
