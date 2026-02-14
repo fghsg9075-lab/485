@@ -549,7 +549,7 @@ const App: React.FC = () => {
                   ...state.user!, 
                   isPremium: false, 
                   subscriptionTier: 'FREE' as const, // Explicit cast
-                  subscriptionLevel: 'BASIC' as const, 
+                  subscriptionLevel: undefined, // Reset to undefined (Normal AI)
                   subscriptionEndDate: undefined 
               };
               localStorage.setItem('nst_current_user', JSON.stringify(updatedUser));
@@ -648,7 +648,7 @@ const App: React.FC = () => {
                 ...user, 
                 isPremium: false, 
                 subscriptionTier: 'FREE', 
-                subscriptionLevel: 'BASIC',
+                subscriptionLevel: undefined, // Reset to undefined (Normal AI)
                 subscriptionEndDate: undefined 
             };
             localStorage.setItem('nst_current_user', JSON.stringify(user));
