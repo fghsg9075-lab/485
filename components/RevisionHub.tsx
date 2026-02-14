@@ -166,7 +166,7 @@ export const RevisionHub: React.FC<Props> = ({ user, onTabChange, settings, onNa
         }
     };
 
-    const filteredTopics = filter === 'ALL' ? topics : topics.filter(t => t.status === filter);
+    // const filteredTopics = filter === 'ALL' ? topics : topics.filter(t => t.status === filter); // Removed unused variable
 
     return (
         <div className="space-y-6 pb-24 p-4 animate-in fade-in">
