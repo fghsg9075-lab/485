@@ -1239,20 +1239,27 @@ const App: React.FC = () => {
 
     // Filter Admin Data for the requested Type
     if (onlineContent) {
-        if (type === 'PDF_FREE' && onlineContent.freeLink) {
-            onlineContent = { ...onlineContent, content: onlineContent.freeLink, type, price: 0 };
+        if (type === 'PDF_FREE' && (onlineContent.freeLink || onlineContent.freeNotesHtml || onlineContent.schoolFreeNotesList?.length > 0 || onlineContent.competitionFreeNotesList?.length > 0)) {
+            onlineContent = { ...onlineContent, content: onlineContent.freeLink || '', type, price: 0 };
             foundAdminContent = true;
-        } else if (type === 'PDF_PREMIUM' && onlineContent.premiumLink) {
-            onlineContent = { ...onlineContent, content: onlineContent.premiumLink, type }; // Uses default price from object
+        } else if (type === 'PDF_PREMIUM' && (onlineContent.premiumLink || onlineContent.premiumNotesHtml || onlineContent.schoolPremiumNotesList?.length > 0 || onlineContent.competitionPremiumNotesList?.length > 0)) {
+            onlineContent = { ...onlineContent, content: onlineContent.premiumLink || '', type }; // Uses default price from object
             foundAdminContent = true;
         } else if (type === 'PDF_ULTRA' && onlineContent.ultraPdfLink) {
             onlineContent = { ...onlineContent, content: onlineContent.ultraPdfLink, type, price: 10 }; // Ultra defaults to 10
             foundAdminContent = true;
-        } else if (type === 'VIDEO_LECTURE' && (onlineContent.videoPlaylist?.length > 0 || onlineContent.freeVideoLink || onlineContent.premiumVideoLink)) {
+        } else if (type === 'VIDEO_LECTURE' && (onlineContent.videoPlaylist?.length > 0 || onlineContent.schoolVideoPlaylist?.length > 0 || onlineContent.competitionVideoPlaylist?.length > 0 || onlineContent.freeVideoLink || onlineContent.premiumVideoLink)) {
             // Prioritize Playlist -> Premium Link -> Free Link
             const videoUrl = onlineContent.premiumVideoLink || onlineContent.freeVideoLink || '';
             const vidPrice = onlineContent.videoCreditsCost !== undefined ? onlineContent.videoCreditsCost : 5;
-            onlineContent = { ...onlineContent, content: videoUrl, videoPlaylist: onlineContent.videoPlaylist, type, price: vidPrice };
+            // Ensure playlists are passed through
+            onlineContent = {
+                ...onlineContent,
+                content: videoUrl,
+                videoPlaylist: onlineContent.videoPlaylist || onlineContent.schoolVideoPlaylist || onlineContent.competitionVideoPlaylist, // Fallback logic
+                type,
+                price: vidPrice
+            };
             foundAdminContent = true;
         } else {
             // Not found in Admin Data for this specific type (might be AI content)
