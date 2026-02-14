@@ -57,8 +57,17 @@ export const LessonView: React.FC<Props> = ({
 
   const [showQuestionDrawer, setShowQuestionDrawer] = useState(false);
   const [batchIndex, setBatchIndex] = useState(0);
-  const [autoReadEnabled, setAutoReadEnabled] = useState(true);
+  // Initialize from LocalStorage (Global Setting)
+  const [autoReadEnabled, setAutoReadEnabled] = useState(() => localStorage.getItem('nst_auto_tts') !== 'false');
   const BATCH_SIZE = 1;
+
+  // Update LocalStorage when toggled locally (User preference persistence)
+  const toggleAutoRead = () => {
+      const newState = !autoReadEnabled;
+      setAutoReadEnabled(newState);
+      localStorage.setItem('nst_auto_tts', newState.toString());
+      if (!newState) window.speechSynthesis.cancel();
+  };
 
   // LANGUAGE AUTO-SELECT
   useEffect(() => {
@@ -130,8 +139,11 @@ export const LessonView: React.FC<Props> = ({
           if (q) {
               // Wait a bit for transition
               setTimeout(() => {
-                  const text = `${q.question}. Options: ${q.options.join(', ')}`;
-                  startSpeaking(text);
+                  // Re-check enabled state inside timeout to prevent race conditions
+                  if (localStorage.getItem('nst_auto_tts') !== 'false') {
+                      const text = `${q.question}. Options: ${q.options.join(', ')}`;
+                      startSpeaking(text); // Ensure startSpeaking is defined or imported
+                  }
               }, 500);
           }
       } else {
@@ -163,11 +175,17 @@ export const LessonView: React.FC<Props> = ({
   const contentRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
+    // AUTO START SPEECH FOR NOTES if Enabled
+    if (autoReadEnabled && !isSpeaking && contentRef.current && !loading && !content?.mcqData) {
+        setTimeout(() => {
+             handleSpeak();
+        }, 1000);
+    }
     return () => {
         stopSpeaking();
         setIsSpeaking(false);
     };
-  }, [content]);
+  }, [content, autoReadEnabled, loading]); // Added autoReadEnabled dependency to trigger auto-play
 
   const handleSpeak = () => {
       if (isSpeaking) {
@@ -836,12 +854,9 @@ export const LessonView: React.FC<Props> = ({
                    <div className="flex items-center gap-3">
                        {/* Auto Read Toggle */}
                        <button
-                           onClick={() => {
-                               const newState = !autoReadEnabled;
-                               setAutoReadEnabled(newState);
-                               if (!newState) window.speechSynthesis.cancel();
-                           }}
+                           onClick={toggleAutoRead}
                            className={`p-2 rounded-lg transition-all ${autoReadEnabled ? 'bg-indigo-100 text-indigo-600' : 'bg-slate-100 text-slate-400'}`}
+                           title="Toggle Auto-Read"
                        >
                            {autoReadEnabled ? <Volume2 size={18} /> : <Volume2 size={18} className="opacity-50" />}
                        </button>

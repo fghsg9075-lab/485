@@ -655,6 +655,25 @@ const App: React.FC = () => {
             saveUserToLive(user);
         }
 
+        // REVISION CLEANUP (Auto-Clear old notifications after 7 days overdue)
+        if (user.revisionSchedule) {
+            const now = Date.now();
+            const sevenDaysMs = 7 * 24 * 60 * 60 * 1000;
+            const initialLen = user.revisionSchedule.length;
+
+            user.revisionSchedule = user.revisionSchedule.filter(item => {
+                const dueTime = new Date(item.nextRevisionDate).getTime();
+                // Keep if not overdue by more than 7 days
+                return (now - dueTime) < sevenDaysMs;
+            });
+
+            if (user.revisionSchedule.length !== initialLen) {
+                console.log("Cleaned up old revision topics");
+                localStorage.setItem('nst_current_user', JSON.stringify(user));
+                saveUserToLive(user);
+            }
+        }
+
         if (!user.progress) user.progress = {};
         if (user.isLocked) { 
             localStorage.removeItem('nst_current_user'); 
@@ -908,6 +927,43 @@ const App: React.FC = () => {
     const updatedUser = { ...state.user };
     if (!updatedUser.testResults) updatedUser.testResults = [];
     updatedUser.testResults.unshift(result);
+
+    // REVISION SYSTEM LOGIC
+    if (!updatedUser.revisionSchedule) updatedUser.revisionSchedule = [];
+
+    const topicStats: Record<string, { correct: number, total: number }> = {};
+    displayData.forEach((q, idx) => {
+        const topic = q.topic || 'General';
+        if (!topicStats[topic]) topicStats[topic] = { correct: 0, total: 0 };
+        topicStats[topic].total++;
+        if (answers[idx] === q.correctAnswer) topicStats[topic].correct++;
+    });
+
+    Object.keys(topicStats).forEach(topic => {
+        const { correct, total } = topicStats[topic];
+        const pct = (correct / total) * 100;
+        let category: 'WEAK' | 'AVERAGE' | 'STRONG' = 'AVERAGE';
+        let days = 3;
+
+        if (pct < 50) { category = 'WEAK'; days = 1; }
+        else if (pct > 80) { category = 'STRONG'; days = 7; }
+
+        const nextDate = new Date();
+        nextDate.setDate(nextDate.getDate() + days);
+
+        // Remove old entry for this topic if exists
+        updatedUser.revisionSchedule = updatedUser.revisionSchedule!.filter(item => item.topic !== topic);
+
+        updatedUser.revisionSchedule!.push({
+            id: `rev-${Date.now()}-${Math.random()}`,
+            topic,
+            category,
+            nextRevisionDate: nextDate.toISOString(),
+            createdAt: new Date().toISOString(),
+            chapterId: state.selectedChapter?.id,
+            subjectId: state.selectedSubject?.id
+        });
+    });
     
     // Save to Firestore
     saveUserHistory(state.user.id, result);
