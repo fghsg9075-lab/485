@@ -70,7 +70,7 @@ type AdminTab =
   | 'CONTENT_AUDIO'
   | 'CONTENT_MCQ' 
   | 'CONTENT_TEST' 
-      /* | 'CONTENT_NOTES' - REMOVED */
+  | 'TOPIC_NOTES_MANAGER'
   | 'BULK_UPLOAD'    
   | 'CONFIG_GENERAL' 
   | 'CONFIG_SECURITY' 
@@ -116,6 +116,14 @@ interface ContentConfig {
     draftCompetitionPremiumNotesHtml?: string; // NEW: Draft for Competition Premium Notes
     aiImagePrice?: number; // Price for AI Image Notes
     chapterAiImage?: string; // NEW: Per-Chapter AI Loading Image
+
+    // UNLIMITED NOTES (NEW)
+    schoolFreeNotesList?: {title: string, url: string, type: 'PDF' | 'HTML', content?: string}[];
+    competitionFreeNotesList?: {title: string, url: string, type: 'PDF' | 'HTML', content?: string}[];
+    schoolPremiumNotesList?: {title: string, url: string, type: 'PDF' | 'HTML', content?: string}[];
+    competitionPremiumNotesList?: {title: string, url: string, type: 'PDF' | 'HTML', content?: string}[];
+    freeNotesLabel?: string; // Custom Label for Free Notes Button
+
     schoolVideoPlaylist?: {title: string, url: string, price?: number, access?: 'FREE' | 'BASIC' | 'ULTRA'}[];
     competitionVideoPlaylist?: {title: string, url: string, price?: number, access?: 'FREE' | 'BASIC' | 'ULTRA'}[];
     schoolAudioPlaylist?: {title: string, url: string, price?: number, access?: 'FREE' | 'BASIC' | 'ULTRA'}[];
@@ -519,12 +527,16 @@ const AdminDashboardInner: React.FC<Props> = ({ onNavigate, settings, onUpdateSe
       const currentVideoField = syllabusMode === 'SCHOOL' ? 'schoolVideoPlaylist' : 'competitionVideoPlaylist';
       const currentAudioField = syllabusMode === 'SCHOOL' ? 'schoolAudioPlaylist' : 'competitionAudioPlaylist';
       const currentSlotsField = syllabusMode === 'SCHOOL' ? 'schoolPdfPremiumSlots' : 'competitionPdfPremiumSlots';
+      const currentFreeNotesField = syllabusMode === 'SCHOOL' ? 'schoolFreeNotesList' : 'competitionFreeNotesList';
+      const currentPremiumNotesField = syllabusMode === 'SCHOOL' ? 'schoolPremiumNotesList' : 'competitionPremiumNotesList';
       
       const updatedConfig = {
           ...editConfig,
           [currentVideoField]: videoPlaylist,
           [currentAudioField]: audioPlaylist,
-          [currentSlotsField]: premiumNoteSlots
+          [currentSlotsField]: premiumNoteSlots,
+          [currentFreeNotesField]: freeNotesList,
+          [currentPremiumNotesField]: premiumNotesList
       };
       setEditConfig(updatedConfig);
 
@@ -537,6 +549,10 @@ const AdminDashboardInner: React.FC<Props> = ({ onNavigate, settings, onUpdateSe
           setAudioPlaylist(updatedConfig.schoolAudioPlaylist || updatedConfig.audioPlaylist || []);
           // @ts-ignore
           setPremiumNoteSlots(updatedConfig.schoolPdfPremiumSlots || updatedConfig.premiumNoteSlots || []);
+          // @ts-ignore
+          setFreeNotesList(updatedConfig.schoolFreeNotesList || []);
+          // @ts-ignore
+          setPremiumNotesList(updatedConfig.schoolPremiumNotesList || []);
       } else {
           // @ts-ignore
           setVideoPlaylist(updatedConfig.competitionVideoPlaylist || []);
@@ -544,6 +560,10 @@ const AdminDashboardInner: React.FC<Props> = ({ onNavigate, settings, onUpdateSe
           setAudioPlaylist(updatedConfig.competitionAudioPlaylist || []);
           // @ts-ignore
           setPremiumNoteSlots(updatedConfig.competitionPdfPremiumSlots || []);
+          // @ts-ignore
+          setFreeNotesList(updatedConfig.competitionFreeNotesList || []);
+          // @ts-ignore
+          setPremiumNotesList(updatedConfig.competitionPremiumNotesList || []);
       }
       
       setSyllabusMode(newMode);
@@ -554,6 +574,10 @@ const AdminDashboardInner: React.FC<Props> = ({ onNavigate, settings, onUpdateSe
   const [videoPlaylist, setVideoPlaylist] = useState<{title: string, url: string, price?: number, access?: 'FREE' | 'BASIC' | 'ULTRA'}[]>([]);
   const [audioPlaylist, setAudioPlaylist] = useState<{title: string, url: string, price?: number, access?: 'FREE' | 'BASIC' | 'ULTRA'}[]>([]);
   const [premiumNoteSlots, setPremiumNoteSlots] = useState<PremiumNoteSlot[]>([]);
+
+  // UNLIMITED NOTES STATE (NEW)
+  const [freeNotesList, setFreeNotesList] = useState<{title: string, url: string, type: 'PDF' | 'HTML', content?: string}[]>([]);
+  const [premiumNotesList, setPremiumNotesList] = useState<{title: string, url: string, type: 'PDF' | 'HTML', content?: string}[]>([]);
 
   // NEW TOPIC CONTENT STATE
   const [topicNotes, setTopicNotes] = useState<{ id: string, title: string, content: string, isPremium: boolean, topic: string }[]>([]);
@@ -744,6 +768,8 @@ const AdminDashboardInner: React.FC<Props> = ({ onNavigate, settings, onUpdateSe
           [syllabusMode === 'SCHOOL' ? 'schoolVideoPlaylist' : 'competitionVideoPlaylist']: videoPlaylist,
           [syllabusMode === 'SCHOOL' ? 'schoolAudioPlaylist' : 'competitionAudioPlaylist']: audioPlaylist,
           [syllabusMode === 'SCHOOL' ? 'schoolPdfPremiumSlots' : 'competitionPdfPremiumSlots']: premiumNoteSlots,
+          [syllabusMode === 'SCHOOL' ? 'schoolFreeNotesList' : 'competitionFreeNotesList']: freeNotesList,
+          [syllabusMode === 'SCHOOL' ? 'schoolPremiumNotesList' : 'competitionPremiumNotesList']: premiumNotesList,
 
           // Legacy sync (ONLY Update if in SCHOOL mode to protect separation)
           // We DO NOT sync to legacy fields if in Competition mode to prevent pollution
@@ -1666,10 +1692,14 @@ const AdminDashboardInner: React.FC<Props> = ({ onNavigate, settings, onUpdateSe
           setVideoPlaylist(data.schoolVideoPlaylist || data.videoPlaylist || []);
           setAudioPlaylist(data.schoolAudioPlaylist || data.audioPlaylist || []); 
           setPremiumNoteSlots(data.schoolPdfPremiumSlots || data.premiumNoteSlots || []);
+          setFreeNotesList(data.schoolFreeNotesList || []);
+          setPremiumNotesList(data.schoolPremiumNotesList || []);
       } else {
           setVideoPlaylist(data.competitionVideoPlaylist || []); // No fallback
           setAudioPlaylist(data.competitionAudioPlaylist || []); // No fallback
           setPremiumNoteSlots(data.competitionPdfPremiumSlots || []); // No fallback
+          setFreeNotesList(data.competitionFreeNotesList || []);
+          setPremiumNotesList(data.competitionPremiumNotesList || []);
       }
 
       // Load Topic Content
@@ -2448,7 +2478,7 @@ const AdminDashboardInner: React.FC<Props> = ({ onNavigate, settings, onUpdateSe
                       <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-5 gap-3">
                           <button onClick={() => setActiveTab('CONTENT_PDF')} className="p-3 bg-white rounded-xl shadow-sm border border-slate-100 text-slate-600 hover:text-blue-600 hover:shadow-md transition-all flex flex-col items-center gap-2">
                               <div className="p-2 bg-blue-50 text-blue-600 rounded-full"><FileText size={20} /></div>
-                              <span className="text-[10px] font-bold">PDF / Notes</span>
+                              <span className="text-[10px] font-bold">Main Notes</span>
                           </button>
                           <button onClick={() => setActiveTab('CONTENT_VIDEO')} className="p-3 bg-white rounded-xl shadow-sm border border-slate-100 text-slate-600 hover:text-red-600 hover:shadow-md transition-all flex flex-col items-center gap-2">
                               <div className="p-2 bg-red-50 text-red-600 rounded-full"><Video size={20} /></div>
@@ -2461,6 +2491,10 @@ const AdminDashboardInner: React.FC<Props> = ({ onNavigate, settings, onUpdateSe
                           <button onClick={() => setActiveTab('CONTENT_MCQ')} className="p-3 bg-white rounded-xl shadow-sm border border-slate-100 text-slate-600 hover:text-purple-600 hover:shadow-md transition-all flex flex-col items-center gap-2">
                               <div className="p-2 bg-purple-50 text-purple-600 rounded-full"><CheckCircle size={20} /></div>
                               <span className="text-[10px] font-bold">MCQ & Tests</span>
+                          </button>
+                          <button onClick={() => setActiveTab('TOPIC_NOTES_MANAGER')} className="p-3 bg-white rounded-xl shadow-sm border border-slate-100 text-slate-600 hover:text-cyan-600 hover:shadow-md transition-all flex flex-col items-center gap-2">
+                              <div className="p-2 bg-cyan-50 text-cyan-600 rounded-full"><BookOpen size={20} /></div>
+                              <span className="text-[10px] font-bold">Topic Notes</span>
                           </button>
                           <button onClick={() => setActiveTab('BULK_UPLOAD')} className="p-3 bg-white rounded-xl shadow-sm border border-slate-100 text-slate-600 hover:text-orange-600 hover:shadow-md transition-all flex flex-col items-center gap-2">
                               <div className="p-2 bg-orange-50 text-orange-600 rounded-full"><LayersIcon size={20} /></div>
@@ -4141,180 +4175,166 @@ Capital of India?       Mumbai  Delhi   Kolkata Chennai 2       Delhi is the cap
                       {activeTab === 'CONTENT_PDF' && (
                           <div className="space-y-6">
 
-                              {/* FREE PDF SECTION (DYNAMIC) */}
+                              {/* CUSTOM LABEL FOR FREE BUTTON */}
+                              <div className="bg-white p-3 rounded-xl border border-slate-200">
+                                  <label className="text-xs font-bold text-slate-500 uppercase mb-1 block">Custom Label for Free Notes Button</label>
+                                  <input
+                                      type="text"
+                                      value={editConfig.freeNotesLabel || ''}
+                                      onChange={e => setEditConfig({...editConfig, freeNotesLabel: e.target.value})}
+                                      placeholder="e.g. Office Notes, Class Notes (Default: Free Notes)"
+                                      className="w-full p-2 border rounded-lg text-sm font-bold"
+                                  />
+                              </div>
+
+                              {/* UNLIMITED FREE NOTES MANAGER */}
                               <div className="bg-green-50 p-4 rounded-xl border border-green-100">
-                                  <label className="block text-xs font-black text-green-800 uppercase mb-1 flex items-center gap-2">
-                                      <FileText size={14} /> Legacy Free PDF Link ({syllabusMode})
-                                  </label>
-                                  <div className="flex items-center bg-white border border-green-200 rounded-xl overflow-hidden mb-2">
-                                      <div className="bg-green-50 p-3"><Link size={16} className="text-green-600" /></div>
-                                      <input 
-                                          type="text" 
-                                          value={editConfig[getModeField('pdfLink') as keyof ContentConfig] || ''} 
-                                          onChange={e => setEditConfig({...editConfig, [getModeField('pdfLink')]: e.target.value})} 
-                                          className="flex-1 p-3 outline-none text-sm" 
-                                          placeholder={`https://drive.google.com/... (${syllabusMode} Only)`} 
-                                      />
-                                  </div>
-                                  
-                                  {/* PASTE OPTION FOR FREE */}
-                                  <label className="block text-[10px] font-bold text-green-700 uppercase mb-1 mt-3">OR Paste Notes Text (Free)</label>
-                                  <textarea 
-                                      value={editConfig[getModeField('freeNotesHtml') as keyof ContentConfig] || ''} 
-                                      onChange={e => setEditConfig({...editConfig, [getModeField('freeNotesHtml')]: e.target.value})} 
-                                      className="w-full p-3 border border-green-200 rounded-xl text-sm h-32 focus:ring-2 focus:ring-green-500 outline-none"
-                                      placeholder={`Paste detailed notes here for ${syllabusMode} users... (Markdown/HTML supported)`}
-                                  />
-                                  <p className="text-[10px] text-green-600 mt-1">Priority: Link {' > '} Pasted Text {' > '} AI</p>
-                              </div>
+                                  <h4 className="font-bold text-green-900 mb-4 flex items-center gap-2">
+                                      <FileText size={20} /> Free Notes Collection ({syllabusMode})
+                                  </h4>
 
-                              {/* PREMIUM PDF SECTION */}
-                              <div className="bg-purple-50 p-4 rounded-xl border border-purple-100">
-                                  <label className="block text-xs font-bold text-purple-800 uppercase mb-1">Premium PDF Link ({syllabusMode})</label>
-                                  <div className="flex items-center bg-white border border-purple-200 rounded-xl overflow-hidden mb-2">
-                                      <div className="bg-purple-50 p-3"><Link size={16} className="text-purple-600" /></div>
-                                      <input 
-                                          type="text" 
-                                          value={editConfig[getModeField('pdfLink').replace('Link', 'PremiumLink') as keyof ContentConfig] || editConfig.premiumLink || ''} 
-                                          onChange={e => {
-                                              // Fallback to legacy premiumLink if mode-specific logic fails or for backward compat
-                                              // But ideally we want mode specific. 
-                                              // Let's use specific field: schoolPremiumPdfLink / competitionPremiumPdfLink if we add them?
-                                              // Wait, interface only has 'premiumLink'. I need to add 'schoolPremiumLink' etc if I want separation.
-                                              // The user said "missing option to paste text for Free/Premium notes in School/Competition modes".
-                                              // They didn't explicitly ask for Premium LINK separation, but it implies it. 
-                                              // For now, I'll bind the TEXT to mode-specific, and keep LINK as legacy 'premiumLink' BUT allow pasting.
-                                              // Actually, let's just enable the Paste for Premium Notes (Mode Specific).
-                                              setEditConfig({...editConfig, premiumLink: e.target.value})
-                                          }} 
-                                          className="flex-1 p-3 outline-none text-sm" 
-                                          placeholder="https://... (Shared Link)" 
-                                      />
-                                  </div>
-
-                                  {/* PASTE OPTION FOR PREMIUM */}
-                                  <label className="block text-[10px] font-bold text-purple-700 uppercase mb-1 mt-3">OR Paste Premium Notes ({syllabusMode})</label>
-                                  <textarea 
-                                      value={editConfig[getModeField('premiumNotesHtml') as keyof ContentConfig] || ''} 
-                                      onChange={e => setEditConfig({...editConfig, [getModeField('premiumNotesHtml')]: e.target.value})} 
-                                      className="w-full p-3 border border-purple-200 rounded-xl text-sm h-32 focus:ring-2 focus:ring-purple-500 outline-none"
-                                      placeholder={`Paste PREMIUM notes here for ${syllabusMode} users...`}
-                                  />
-                                  <p className="text-[10px] text-purple-600 mt-1">These notes are only visible to Paid/Ultra users.</p>
-                              </div>
-
-                              {/* PREMIUM NOTES COLLECTION (Dynamic) */}
-                              <div className="bg-gradient-to-br from-purple-50 to-indigo-50 p-4 rounded-xl border border-purple-200">
-                                  <div className="flex justify-between items-center mb-4">
-                                      <h4 className="font-bold text-purple-900 flex items-center gap-2">
-                                          <LayersIcon size={18} /> Premium Notes Collection (Unlimited)
-                                      </h4>
-                                      <button
-                                          onClick={() => setPremiumNoteSlots([...premiumNoteSlots, {
-                                              id: `pnote-${Date.now()}`,
-                                              title: `New Note ${premiumNoteSlots.length + 1}`,
-                                              url: '',
-                                              content: '',
-                                              type: 'PDF',
-                                              color: 'blue',
-                                              access: 'BASIC'
-                                          }])}
-                                          className="bg-purple-600 text-white px-3 py-1.5 rounded-lg text-xs font-bold hover:bg-purple-700 shadow-sm"
-                                      >
-                                          + Add Note
-                                      </button>
-                                  </div>
-
-                                  <div className="space-y-3 max-h-[60vh] overflow-y-auto pr-2 custom-scrollbar">
-                                      {premiumNoteSlots.length === 0 && <p className="text-center text-slate-400 py-4 text-xs italic">No notes added. Click '+ Add Note' to create.</p>}
-                                      {premiumNoteSlots.map((slot, i) => {
-                                          const updateSlot = (field: keyof PremiumNoteSlot, val: any) => {
-                                              const newSlots = [...premiumNoteSlots];
-                                              // @ts-ignore
-                                              newSlots[i] = { ...newSlots[i], [field]: val };
-                                              setPremiumNoteSlots(newSlots);
-                                          };
-
-                                          const removeSlot = () => {
-                                              if(confirm("Remove this note?")) {
-                                                  const newSlots = premiumNoteSlots.filter((_, idx) => idx !== i);
-                                                  setPremiumNoteSlots(newSlots);
-                                              }
-                                          };
-
-                                          const slotType = slot.type || 'PDF';
-
-                                          return (
-                                              <div key={i} className="bg-white p-3 rounded-lg border border-purple-100 shadow-sm flex flex-col gap-2">
-                                                  <div className="flex gap-2 items-center">
-                                                      <span className="w-6 h-6 bg-purple-100 text-purple-700 rounded-full flex items-center justify-center text-xs font-bold shrink-0">{i+1}</span>
-                                                      <input 
-                                                          type="text" 
-                                                          value={slot.title} 
-                                                          onChange={e => updateSlot('title', e.target.value)}
-                                                          placeholder="Title"
-                                                          className="flex-1 p-2 border rounded text-xs font-bold"
-                                                      />
-                                                      <select
-                                                          value={slotType}
-                                                          onChange={e => updateSlot('type', e.target.value)}
-                                                          className="p-2 border rounded text-xs font-bold bg-slate-100"
-                                                      >
-                                                          <option value="PDF">PDF Link</option>
-                                                          <option value="HTML">HTML Content</option>
-                                                      </select>
-                                                      <select 
-                                                          value={slot.color} 
-                                                          onChange={e => updateSlot('color', e.target.value)}
-                                                          className="p-2 border rounded text-xs"
-                                                      >
-                                                          <option value="blue">Blue</option>
-                                                          <option value="red">Red</option>
-                                                          <option value="green">Green</option>
-                                                          <option value="yellow">Yellow</option>
-                                                          <option value="purple">Purple</option>
-                                                          <option value="orange">Orange</option>
-                                                          <option value="teal">Teal</option>
-                                                          <option value="slate">Slate</option>
-                                                      </select>
-                                                      <select 
-                                                          value={slot.access} 
-                                                          onChange={e => updateSlot('access', e.target.value)}
-                                                          className="p-2 border rounded text-xs font-bold bg-slate-50"
-                                                      >
-                                                          <option value="FREE">Free</option>
-                                                          <option value="BASIC">Basic</option>
-                                                          <option value="ULTRA">Ultra</option>
-                                                      </select>
-                                                      <button
-                                                          onClick={removeSlot}
-                                                          className="p-2 text-red-400 hover:text-red-600 hover:bg-red-50 rounded"
-                                                          title="Remove Note"
-                                                      >
-                                                          <Trash2 size={14} />
-                                                      </button>
-                                                  </div>
-
-                                                  {slotType === 'HTML' ? (
-                                                      <SimpleRichTextEditor
-                                                          value={slot.content || ''}
-                                                          onChange={html => updateSlot('content', html)}
-                                                          className="w-full p-2 border rounded text-xs min-h-[100px] max-h-[200px] overflow-y-auto bg-white"
-                                                          placeholder="Type notes content here..."
-                                                      />
-                                                  ) : (
-                                                      <input
-                                                          type="text"
-                                                          value={slot.url}
-                                                          onChange={e => updateSlot('url', e.target.value)}
-                                                          placeholder="PDF URL (Drive Link)..."
-                                                          className="w-full p-2 border rounded text-xs font-mono text-blue-600 bg-slate-50"
-                                                      />
-                                                  )}
+                                  <div className="space-y-3 mb-4">
+                                      {freeNotesList.map((note, idx) => (
+                                          <div key={idx} className="bg-white p-3 rounded-lg border border-green-100 shadow-sm flex flex-col gap-2">
+                                              <div className="flex gap-2 items-center">
+                                                  <span className="w-6 text-center text-xs font-bold text-green-600">{idx + 1}</span>
+                                                  <input
+                                                      type="text"
+                                                      value={note.title}
+                                                      onChange={e => {
+                                                          const updated = [...freeNotesList];
+                                                          updated[idx].title = e.target.value;
+                                                          setFreeNotesList(updated);
+                                                      }}
+                                                      placeholder="Note Title (e.g. Part 1)"
+                                                      className="flex-1 p-2 border rounded text-xs font-bold"
+                                                  />
+                                                  <select
+                                                      value={note.type}
+                                                      onChange={e => {
+                                                          const updated = [...freeNotesList];
+                                                          updated[idx].type = e.target.value as 'PDF' | 'HTML';
+                                                          setFreeNotesList(updated);
+                                                      }}
+                                                      className="p-2 border rounded text-xs bg-slate-50"
+                                                  >
+                                                      <option value="PDF">PDF</option>
+                                                      <option value="HTML">HTML</option>
+                                                  </select>
+                                                  <button onClick={() => setFreeNotesList(prev => prev.filter((_, i) => i !== idx))} className="text-red-400 hover:text-red-600 p-2">
+                                                      <Trash2 size={16} />
+                                                  </button>
                                               </div>
-                                          );
-                                      })}
+
+                                              {note.type === 'HTML' ? (
+                                                  <textarea
+                                                      value={note.content || ''}
+                                                      onChange={e => {
+                                                          const updated = [...freeNotesList];
+                                                          updated[idx].content = e.target.value;
+                                                          setFreeNotesList(updated);
+                                                      }}
+                                                      className="w-full p-2 border rounded text-xs h-20 font-mono"
+                                                      placeholder="HTML Content..."
+                                                  />
+                                              ) : (
+                                                  <input
+                                                      type="text"
+                                                      value={note.url}
+                                                      onChange={e => {
+                                                          const updated = [...freeNotesList];
+                                                          updated[idx].url = e.target.value;
+                                                          setFreeNotesList(updated);
+                                                      }}
+                                                      placeholder="PDF URL..."
+                                                      className="w-full p-2 border rounded text-xs text-blue-600"
+                                                  />
+                                              )}
+                                          </div>
+                                      ))}
                                   </div>
+
+                                  <button
+                                      onClick={() => setFreeNotesList([...freeNotesList, {title: '', url: '', type: 'PDF'}])}
+                                      className="w-full py-2 bg-white border border-green-300 text-green-600 font-bold rounded-lg hover:bg-green-50 border-dashed"
+                                  >
+                                      + Add Free Note
+                                  </button>
+                              </div>
+
+                              {/* UNLIMITED PREMIUM NOTES MANAGER */}
+                              <div className="bg-purple-50 p-4 rounded-xl border border-purple-200">
+                                  <h4 className="font-bold text-purple-900 mb-4 flex items-center gap-2">
+                                      <Crown size={20} /> Premium Notes Collection ({syllabusMode})
+                                  </h4>
+
+                                  <div className="space-y-3 mb-4">
+                                      {premiumNotesList.map((note, idx) => (
+                                          <div key={idx} className="bg-white p-3 rounded-lg border border-purple-100 shadow-sm flex flex-col gap-2">
+                                              <div className="flex gap-2 items-center">
+                                                  <span className="w-6 text-center text-xs font-bold text-purple-600">{idx + 1}</span>
+                                                  <input
+                                                      type="text"
+                                                      value={note.title}
+                                                      onChange={e => {
+                                                          const updated = [...premiumNotesList];
+                                                          updated[idx].title = e.target.value;
+                                                          setPremiumNotesList(updated);
+                                                      }}
+                                                      placeholder="Note Title"
+                                                      className="flex-1 p-2 border rounded text-xs font-bold"
+                                                  />
+                                                  <select
+                                                      value={note.type}
+                                                      onChange={e => {
+                                                          const updated = [...premiumNotesList];
+                                                          updated[idx].type = e.target.value as 'PDF' | 'HTML';
+                                                          setPremiumNotesList(updated);
+                                                      }}
+                                                      className="p-2 border rounded text-xs bg-slate-50"
+                                                  >
+                                                      <option value="PDF">PDF</option>
+                                                      <option value="HTML">HTML</option>
+                                                  </select>
+                                                  <button onClick={() => setPremiumNotesList(prev => prev.filter((_, i) => i !== idx))} className="text-red-400 hover:text-red-600 p-2">
+                                                      <Trash2 size={16} />
+                                                  </button>
+                                              </div>
+
+                                              {note.type === 'HTML' ? (
+                                                  <textarea
+                                                      value={note.content || ''}
+                                                      onChange={e => {
+                                                          const updated = [...premiumNotesList];
+                                                          updated[idx].content = e.target.value;
+                                                          setPremiumNotesList(updated);
+                                                      }}
+                                                      className="w-full p-2 border rounded text-xs h-20 font-mono"
+                                                      placeholder="HTML Content..."
+                                                  />
+                                              ) : (
+                                                  <input
+                                                      type="text"
+                                                      value={note.url}
+                                                      onChange={e => {
+                                                          const updated = [...premiumNotesList];
+                                                          updated[idx].url = e.target.value;
+                                                          setPremiumNotesList(updated);
+                                                      }}
+                                                      placeholder="PDF URL..."
+                                                      className="w-full p-2 border rounded text-xs text-blue-600"
+                                                  />
+                                              )}
+                                          </div>
+                                      ))}
+                                  </div>
+
+                                  <button
+                                      onClick={() => setPremiumNotesList([...premiumNotesList, {title: '', url: '', type: 'PDF'}])}
+                                      className="w-full py-2 bg-white border border-purple-300 text-purple-600 font-bold rounded-lg hover:bg-purple-50 border-dashed"
+                                  >
+                                      + Add Premium Note
+                                  </button>
                               </div>
 
                               {/* TOPIC NOTES MANAGER (NEW) */}
@@ -4395,41 +4415,6 @@ Capital of India?       Mumbai  Delhi   Kolkata Chennai 2       Delhi is the cap
                                       + Add Topic Note
                                   </button>
                               </div>
-
-
-                  {/* NEW: FORCE UPDATE SETTINGS */}
-                  <div className="bg-red-50 p-6 rounded-2xl border border-red-100 mt-6">
-                      <div className="flex items-center gap-2 mb-4">
-                          <Rocket size={20} className="text-red-600" />
-                          <h4 className="font-bold text-red-900">Force Update Configuration</h4>
-                      </div>
-                      <div className="mb-4 bg-white p-3 rounded-xl border border-red-100 text-xs font-medium text-slate-500">
-                          <p>Current System Version: <strong className="text-red-600">{APP_VERSION}</strong></p>
-                          <p>Enter a higher version number below (e.g. {APP_VERSION}.1) to trigger an update for students.</p>
-                      </div>
-                      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                          <div>
-                              <label className="text-xs font-bold text-red-700 uppercase block mb-1">Latest Version Code</label>
-                              <input 
-                                  type="text" 
-                                  value={localSettings.latestVersion || ''} 
-                                  onChange={e => setLocalSettings({...localSettings, latestVersion: e.target.value})} 
-                                  placeholder="e.g. 1.0.1" 
-                                  className="w-full p-3 rounded-xl border border-red-200 font-bold bg-white"
-                              />
-                          </div>
-                          <div>
-                              <label className="text-xs font-bold text-red-700 uppercase block mb-1">Direct Download Link</label>
-                              <input 
-                                  type="text" 
-                                  value={localSettings.updateUrl || ''} 
-                                  onChange={e => setLocalSettings({...localSettings, updateUrl: e.target.value})} 
-                                  placeholder="https://..." 
-                                  className="w-full p-3 rounded-xl border border-red-200 font-bold bg-white"
-                              />
-                          </div>
-                      </div>
-                  </div>
 
                               <div className="flex gap-2">
                                   <label className="flex items-center gap-2 cursor-pointer bg-white px-3 py-3 rounded-xl border border-blue-200">
@@ -8160,6 +8145,131 @@ Capital of India?       Mumbai  Delhi   Kolkata Chennai 2       Delhi is the cap
                       <button onClick={saveUniversalPlaylist} className="flex-1 bg-rose-600 text-white font-bold py-3 rounded-xl shadow hover:bg-rose-700 transition">
                           💾 Save Playlist
                       </button>
+                  </div>
+              </div>
+          </div>
+      )}
+
+      {activeTab === 'TOPIC_NOTES_MANAGER' && (
+          <div className="bg-white p-6 rounded-3xl shadow-sm border border-slate-200 animate-in slide-in-from-right">
+              <div className="flex items-center gap-4 mb-6 border-b pb-4">
+                  <button onClick={() => setActiveTab('DASHBOARD')} className="bg-slate-100 p-2 rounded-full hover:bg-slate-200"><ArrowLeft size={20} /></button>
+                  <h3 className="text-xl font-black text-cyan-800">Topic Notes Manager</h3>
+              </div>
+
+              <div className="bg-cyan-50 p-6 rounded-xl border border-cyan-200">
+                  <div className="flex items-center gap-2 mb-4">
+                      <BookOpen size={24} className="text-cyan-600" />
+                      <h4 className="font-bold text-cyan-900">Manage Topic-Specific Notes</h4>
+                  </div>
+                  <p className="text-xs text-cyan-700 mb-6 bg-white p-3 rounded-lg border border-cyan-100">
+                      These notes are linked to specific topics within a chapter. They will <b>NOT</b> appear on the main course page list, but can be accessed via search or recommendations.
+                  </p>
+
+                  <SubjectSelector />
+
+                  <div className="space-y-4 mb-6">
+                      {!editingChapterId ? (
+                          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3 max-h-[60vh] overflow-y-auto pr-2">
+                              {selChapters.length === 0 && <p className="col-span-full text-center text-slate-400 text-sm py-8">Select a subject to view lessons.</p>}
+                              {selChapters.map((ch) => {
+                                  // We can't easily filter topicNotes here without loading them all, so we show counts if possible or just button
+                                  return (
+                                      <div key={ch.id} className="bg-white p-3 rounded-xl border border-cyan-100 shadow-sm flex flex-col gap-2">
+                                          <div className="flex justify-between items-center">
+                                              <h5 className="font-bold text-slate-800 text-xs truncate w-3/4" title={ch.title}>{ch.title}</h5>
+                                          </div>
+                                          <button
+                                              onClick={() => loadChapterContent(ch.id)}
+                                              className="mt-2 w-full py-2 bg-cyan-600 text-white rounded-lg text-xs font-bold shadow-md hover:bg-cyan-700 flex items-center justify-center gap-2"
+                                          >
+                                              <Edit3 size={14} /> Manage Topic Notes
+                                          </button>
+                                      </div>
+                                  );
+                              })}
+                          </div>
+                      ) : (
+                          <div className="bg-white p-4 rounded-xl border border-cyan-200">
+                              <div className="flex justify-between items-center mb-4 border-b border-slate-100 pb-3">
+                                  <div>
+                                      <h4 className="font-black text-slate-800 text-lg">{selChapters.find(c => c.id === editingChapterId)?.title}</h4>
+                                      <p className="text-xs text-slate-500">Managing Hidden Topic Notes</p>
+                                  </div>
+                                  <button onClick={() => setEditingChapterId(null)} className="text-xs font-bold text-slate-400 hover:text-slate-600">Close Editor</button>
+                              </div>
+
+                              <div className="space-y-3 max-h-[50vh] overflow-y-auto pr-2">
+                                  {topicNotes.map((note, idx) => (
+                                      <div key={note.id || idx} className="flex flex-col gap-2 bg-slate-50 p-3 rounded-lg border border-slate-200">
+                                          <div className="flex gap-2 items-center">
+                                              <span className="w-6 text-center text-xs font-bold text-slate-400">{idx + 1}</span>
+                                              <input
+                                                  type="text"
+                                                  value={note.topic}
+                                                  onChange={(e) => {
+                                                      const updated = [...topicNotes];
+                                                      updated[idx] = { ...updated[idx], topic: e.target.value, title: `Note: ${e.target.value}` };
+                                                      setTopicNotes(updated);
+                                                  }}
+                                                  placeholder="Topic Name (e.g. Newton's Law)"
+                                                  className="flex-1 p-2 border border-slate-200 rounded text-xs font-bold"
+                                              />
+                                              <div className="flex items-center gap-2">
+                                                  <label className="text-[10px] font-bold text-slate-500">Premium?</label>
+                                                  <input
+                                                      type="checkbox"
+                                                      checked={note.isPremium}
+                                                      onChange={(e) => {
+                                                          const updated = [...topicNotes];
+                                                          updated[idx] = { ...updated[idx], isPremium: e.target.checked };
+                                                          setTopicNotes(updated);
+                                                      }}
+                                                  />
+                                              </div>
+                                              <button
+                                                  onClick={() => {
+                                                      const updated = topicNotes.filter((_, i) => i !== idx);
+                                                      setTopicNotes(updated);
+                                                  }}
+                                                  className="p-2 text-red-400 hover:text-red-600 hover:bg-red-50 rounded"
+                                              >
+                                                  <Trash2 size={16} />
+                                              </button>
+                                          </div>
+                                          <textarea
+                                              value={note.content || ''}
+                                              onChange={(e) => {
+                                                  const updated = [...topicNotes];
+                                                  updated[idx] = { ...updated[idx], content: e.target.value };
+                                                  setTopicNotes(updated);
+                                              }}
+                                              placeholder="HTML Content for Note..."
+                                              className="w-full h-24 p-2 border border-slate-200 rounded text-xs font-mono text-slate-600 bg-white ml-8"
+                                          />
+                                      </div>
+                                  ))}
+                              </div>
+
+                              <div className="mt-4 flex gap-2">
+                                  <button
+                                      onClick={() => setTopicNotes([...topicNotes, {
+                                          id: `note-${Date.now()}`,
+                                          title: 'New Note',
+                                          topic: '',
+                                          content: '',
+                                          isPremium: true
+                                      }])}
+                                      className="flex-1 py-3 bg-cyan-50 text-cyan-600 rounded-xl text-xs font-bold border border-cyan-100 hover:bg-cyan-100 flex items-center justify-center gap-2 border-dashed"
+                                  >
+                                      <Plus size={16} /> Add Topic Note
+                                  </button>
+                                  <button onClick={saveChapterContent} className="flex-1 bg-cyan-600 text-white font-bold py-3 rounded-xl shadow hover:bg-cyan-700 transition flex items-center justify-center gap-2">
+                                      <Save size={16} /> Save Changes
+                                  </button>
+                              </div>
+                          </div>
+                      )}
                   </div>
               </div>
           </div>
