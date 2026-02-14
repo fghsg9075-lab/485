@@ -90,56 +90,68 @@ export const RevisionHub: React.FC<Props> = ({ user, onTabChange, settings, onNa
         // Logic to process user.mcqHistory into Topics
         const history = user.mcqHistory || [];
         const topicMap = new Map<string, TopicItem>();
-        const topicStats = new Map<string, { highScores: number }>();
 
-        // First Pass: Calculate Stats (High Scores Count)
-        history.forEach(result => {
-            const topicName = result.chapterTitle || 'Unknown Topic';
-            const percentage = (result.score / result.totalQuestions) * 100;
+        // Sort history chronologically to calculate streaks correctly
+        const sortedHistory = [...history].sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime());
+        const tempTracker = new Map<string, { streak: number }>();
 
-            if (!topicStats.has(topicName)) {
-                topicStats.set(topicName, { highScores: 0 });
-            }
-
-            if (percentage >= 80) {
-                topicStats.get(topicName)!.highScores += 1;
-            }
-        });
-
-        // Second Pass: Build Topic Items
-        history.forEach(result => {
+        sortedHistory.forEach(result => {
             const topicName = result.chapterTitle || 'Unknown Topic';
             const percentage = (result.score / result.totalQuestions) * 100;
             const attemptDate = new Date(result.date);
 
+            // Calculate Streak
+            let currentStreak = 0;
+            if (tempTracker.has(topicName)) {
+                currentStreak = tempTracker.get(topicName)!.streak;
+            }
+
+            if (percentage >= 80) {
+                currentStreak += 1;
+            } else {
+                currentStreak = 0; // Reset on low score
+            }
+
+            tempTracker.set(topicName, { streak: currentStreak });
+
             // Determine Status & Revision Deadline
+            // < 50%      -> 2 days
+            // 50–80%     -> 3 days
+            // > 80%      -> 7 days
+            // 2× >80%    -> 30 days
+
             let status: TopicStatus = 'AVERAGE';
             let daysToAdd = 3;
 
             if (percentage < 50) {
                 status = 'WEAK';
-                daysToAdd = 1; // Daily Revision for Weak
-            } else if (percentage >= 80) {
-                status = 'STRONG';
-                daysToAdd = 30; // Monthly Revision for Strong
+                daysToAdd = 2;
+            } else if (percentage < 80) {
+                status = 'AVERAGE';
+                daysToAdd = 3;
+            } else {
+                if (currentStreak >= 2) {
+                    status = 'STRONG';
+                    daysToAdd = 30; // Mastered
+                } else {
+                    status = 'STRONG';
+                    daysToAdd = 7;
+                }
             }
 
             const nextRev = new Date(attemptDate);
             nextRev.setDate(nextRev.getDate() + daysToAdd);
 
-            // Keep the most relevant/recent status or aggregate?
-            // Simple logic: Latest attempt dictates status
-            if (!topicMap.has(topicName) || new Date(topicMap.get(topicName)!.lastAttempt) < attemptDate) {
-                topicMap.set(topicName, {
-                    id: result.chapterId,
-                    name: topicName,
-                    score: percentage,
-                    lastAttempt: result.date,
-                    status,
-                        nextRevision: nextRev.toISOString(),
-                        subjectName: result.subjectName
-                });
-            }
+            // Always update to the latest attempt's schedule
+            topicMap.set(topicName, {
+                id: result.chapterId,
+                name: topicName,
+                score: percentage,
+                lastAttempt: result.date,
+                status,
+                nextRevision: nextRev.toISOString(),
+                subjectName: result.subjectName
+            });
         });
 
         setTopics(Array.from(topicMap.values()).sort((a, b) => new Date(a.nextRevision).getTime() - new Date(b.nextRevision).getTime()));
