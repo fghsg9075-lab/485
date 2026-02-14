@@ -8360,9 +8360,23 @@ Capital of India?       Mumbai  Delhi   Kolkata Chennai 2       Delhi is the cap
                                                   type="text"
                                                   value={note.topic}
                                                   onChange={(e) => {
-                                                      const updated = [...topicNotes];
-                                                      updated[idx] = { ...updated[idx], topic: e.target.value, title: `Note: ${e.target.value}` };
-                                                      setTopicNotes(updated);
+                                                      const oldTopic = note.topic;
+                                                      const newTopic = e.target.value;
+
+                                                      // 1. Update Note
+                                                      const updatedNotes = [...topicNotes];
+                                                      updatedNotes[idx] = { ...updatedNotes[idx], topic: newTopic, title: `Note: ${newTopic}` };
+                                                      setTopicNotes(updatedNotes);
+
+                                                      // 2. Sync Linked MCQs (Prevent orphans)
+                                                      if (oldTopic && oldTopic !== newTopic) {
+                                                          const updatedMcqs = editingMcqs.map(q =>
+                                                              (q.topic && q.topic.toLowerCase() === oldTopic.toLowerCase())
+                                                                  ? { ...q, topic: newTopic }
+                                                                  : q
+                                                          );
+                                                          setEditingMcqs(updatedMcqs);
+                                                      }
                                                   }}
                                                   placeholder="Topic Name (e.g. Newton's Law)"
                                                   className="flex-1 p-2 border border-slate-200 rounded text-xs font-bold"
@@ -8403,9 +8417,12 @@ Capital of India?       Mumbai  Delhi   Kolkata Chennai 2       Delhi is the cap
                                           {/* LINKED MCQS MANAGER */}
                                           <div className="ml-8 mt-2 p-3 bg-white border border-dashed border-cyan-300 rounded-lg">
                                               <div className="flex justify-between items-center mb-2">
-                                                  <h5 className="text-[10px] font-bold text-cyan-700 uppercase flex items-center gap-1">
-                                                      <CheckCircle size={12} /> Linked MCQs ({editingMcqs.filter(q => q.topic && q.topic.toLowerCase() === note.topic.toLowerCase()).length})
-                                                  </h5>
+                                                  <div>
+                                                      <h5 className="text-[10px] font-bold text-cyan-700 uppercase flex items-center gap-1">
+                                                          <CheckCircle size={12} /> Linked MCQs ({editingMcqs.filter(q => q.topic && q.topic.toLowerCase() === note.topic.toLowerCase()).length})
+                                                      </h5>
+                                                      <p className="text-[9px] text-slate-400">These will appear in Revision Hub.</p>
+                                                  </div>
                                                   <button
                                                       onClick={() => {
                                                           const newQ: MCQItem = {
