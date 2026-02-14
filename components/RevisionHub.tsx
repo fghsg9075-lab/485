@@ -28,7 +28,23 @@ export const RevisionHub: React.FC<Props> = ({ user, onTabChange }) => {
         // Logic to process user.mcqHistory into Topics
         const history = user.mcqHistory || [];
         const topicMap = new Map<string, TopicItem>();
+        const topicStats = new Map<string, { highScores: number }>();
 
+        // First Pass: Calculate Stats (High Scores Count)
+        history.forEach(result => {
+            const topicName = result.chapterTitle || 'Unknown Topic';
+            const percentage = (result.score / result.totalQuestions) * 100;
+
+            if (!topicStats.has(topicName)) {
+                topicStats.set(topicName, { highScores: 0 });
+            }
+
+            if (percentage >= 80) {
+                topicStats.get(topicName)!.highScores += 1;
+            }
+        });
+
+        // Second Pass: Build Topic Items
         history.forEach(result => {
             const topicName = result.chapterTitle || 'Unknown Topic';
             const percentage = (result.score / result.totalQuestions) * 100;
@@ -42,7 +58,15 @@ export const RevisionHub: React.FC<Props> = ({ user, onTabChange }) => {
             // Determine Revision Deadline
             let daysToAdd = 3; // Average
             if (status === 'WEAK') daysToAdd = 1;
-            if (status === 'STRONG') daysToAdd = 7;
+            if (status === 'STRONG') {
+                // Check High Score Count
+                const stats = topicStats.get(topicName);
+                if (stats && stats.highScores >= 2) {
+                    daysToAdd = 30; // Shift to 30 days if mastered twice
+                } else {
+                    daysToAdd = 7;
+                }
+            }
 
             const nextRev = new Date(attemptDate);
             nextRev.setDate(nextRev.getDate() + daysToAdd);
