@@ -614,13 +614,14 @@ export const PdfView: React.FC<Props> = ({
                            : contentData.competitionFreeNotesHtml;
 
                        const hasLegacy = legacyLink || legacyHtml;
-                       const showLegacy = hasLegacy && freeList.length === 0;
+                       // Always show legacy if it exists (Don't hide when list is populated)
+                       const showLegacy = hasLegacy;
 
                        const label = contentData.freeNotesLabel || "Free Notes";
 
                        return (
                            <div className="space-y-3">
-                               {freeList.length > 0 && <h4 className="font-bold text-slate-700 flex items-center gap-2 px-1"><CheckCircle size={18} className="text-green-600"/> {label}</h4>}
+                               {(freeList.length > 0 || showLegacy) && <h4 className="font-bold text-slate-700 flex items-center gap-2 px-1"><CheckCircle size={18} className="text-green-600"/> {label}</h4>}
 
                                {showLegacy && (
                                    <div className="relative group">
@@ -694,7 +695,8 @@ export const PdfView: React.FC<Props> = ({
                            : contentData.competitionPremiumNotesHtml;
 
                        const hasLegacy = legacyLink || legacyHtml;
-                       const showLegacy = hasLegacy && premList.length === 0;
+                       // Always show legacy if it exists
+                       const showLegacy = hasLegacy;
 
                        return (
                            <div className="space-y-3 mt-6">
