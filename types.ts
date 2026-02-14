@@ -159,6 +159,17 @@ export interface User {
   topicStrength?: Record<string, { correct: number, total: number }>; // Key: subjectId or topicId
   usageHistory?: UsageHistoryEntry[];
   subscriptionHistory?: SubscriptionHistoryEntry[];
+  revisionSchedule?: RevisionItem[]; // NEW: Revision System
+}
+
+export interface RevisionItem {
+  id: string;
+  topic: string;
+  category: 'WEAK' | 'AVERAGE' | 'STRONG';
+  nextRevisionDate: string; // ISO String
+  createdAt: string;
+  chapterId?: string;
+  subjectId?: string;
 }
 
 export interface MarksheetSettings {
@@ -551,8 +562,9 @@ export interface SystemSettings {
       ultra: string[];
   };
   areTopicNotesHiddenGlobally?: boolean; // NEW: Global Topic Notes Toggle
+  autoTTS?: boolean; // NEW: Global Auto TTS Toggle
   featureBadges?: Record<string, 'NEW' | 'UPGRADE' | 'NORMAL'>; // NEW: Feature Badges
-  storeFeatures?: { basic: string[], ultra: string[] }; // NEW: Dynamic Store Features
+  // storeFeatures?: { basic: string[], ultra: string[] }; // Duplicate removed
 }
 
 export interface ContentInfoItem {

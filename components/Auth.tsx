@@ -291,8 +291,14 @@ export const Auth: React.FC<Props> = ({ onLogin, logActivity }) => {
             const userCredential = await signInWithEmailAndPassword(auth, loginEmail, pass);
             const firebaseUser = userCredential.user;
 
-            let appUser: any = await getUserByEmail(loginEmail);
-            if (!appUser) appUser = users.find(u => u.email === loginEmail);
+            // 1. Try fetching by ID first (Most Robust - Checks RTDB & Firestore)
+            let appUser: any = await getUserData(firebaseUser.uid);
+
+            // 2. Fallback to Email (Firestore Query)
+            if (!appUser) appUser = await getUserByEmail(loginEmail);
+
+            // 3. Fallback to Local Storage
+            if (!appUser) appUser = users.find(u => u.email === loginEmail || u.id === firebaseUser.uid);
 
             if (!appUser) {
                 appUser = {

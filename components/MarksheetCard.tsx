@@ -268,6 +268,13 @@ export const MarksheetCard: React.FC<Props> = ({ result, user, settings, onClose
     if (initialView === 'ANALYSIS' || result.ultraAnalysisReport) {
         if (result.ultraAnalysisReport) {
              setUltraAnalysisResult(result.ultraAnalysisReport);
+             // AUTO TTS
+             if (localStorage.getItem('nst_auto_tts') !== 'false') {
+                 setTimeout(() => {
+                     const text = getAnalysisTextForSpeech();
+                     if (text) toggleSpeech(text);
+                 }, 1000);
+             }
         }
     }
   }, [initialView, result.ultraAnalysisReport]);
