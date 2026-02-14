@@ -546,6 +546,11 @@ export interface SystemSettings {
       BASIC: string[];
       ULTRA: string[];
   };
+  storeFeatures?: {
+      basic: string[];
+      ultra: string[];
+  };
+  areTopicNotesHiddenGlobally?: boolean; // NEW: Global Topic Notes Toggle
   featureBadges?: Record<string, 'NEW' | 'UPGRADE' | 'NORMAL'>; // NEW: Feature Badges
 }
 
