@@ -45,7 +45,8 @@ const DEFAULT_ULTRA_FEATURES = [
     'Spin Wheel (10 Spins/Day)'
 ];
 
-const QUESTION_START_REGEX = /^(\*\*)?(Q\s*\d+[.:)]?|\d+[.:)]|Question\s*\d+[.:)]?)(\*\*)?\s*/i;
+// Updated Regex to support unnumbered questions (e.g., "Q.", "Question:", "Prashn") and loose numbering
+const QUESTION_START_REGEX = /^(\*\*)?(Q\s*\d*[.:)-]?\s*|Question\s*\d*[.:)-]?\s*|Prashn\s*\d*[.:)-]?\s*|\d+[.:)])(\*\*)?\s*/i;
 
 const looksLikeQuestionBlock = (lines: string[], index: number): boolean => {
     // Check if line index + 5 (Answer line) exists

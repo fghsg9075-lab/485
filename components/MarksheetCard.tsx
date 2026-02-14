@@ -7,6 +7,7 @@ import { generateUltraAnalysis } from '../services/groq';
 import { saveUniversalAnalysis, saveUserToLive, saveAiInteraction, getChapterData } from '../firebase';
 import ReactMarkdown from 'react-markdown';
 import { speakText, stopSpeech, getCategorizedVoices, stripHtml } from '../utils/textToSpeech';
+import { speakWithHighlight, stopSpeaking } from '../utils/ttsHighlighter';
 import { CustomConfirm } from './CustomDialogs'; // Import CustomConfirm
 import { SpeakButton } from './SpeakButton';
 import { renderMathInHtml } from '../utils/mathUtils';
@@ -35,6 +36,22 @@ export const MarksheetCard: React.FC<Props> = ({ result, user, settings, onClose
   const [isDownloadingAll, setIsDownloadingAll] = useState(false);
   const [viewingNote, setViewingNote] = useState<any>(null); // New state for HTML Note Modal
   const [showAnalysisSelection, setShowAnalysisSelection] = useState(false); // Modal for Free vs Premium
+
+  // Note TTS State
+  const [isSpeakingNote, setIsSpeakingNote] = useState(false);
+  const viewingNoteRef = React.useRef<HTMLDivElement>(null);
+
+  const handleSpeakNote = () => {
+      if (isSpeakingNote) {
+          stopSpeaking();
+          setIsSpeakingNote(false);
+          return;
+      }
+      if (viewingNoteRef.current) {
+          setIsSpeakingNote(true);
+          speakWithHighlight(viewingNoteRef.current, 1.0, 'hi-IN', () => setIsSpeakingNote(false));
+      }
+  };
 
   const generateLocalAnalysis = () => {
       // Calculate weak/strong based on topicStats
@@ -1275,15 +1292,19 @@ export const MarksheetCard: React.FC<Props> = ({ result, user, settings, onClose
                             <p className="text-[10px] text-orange-600 font-bold uppercase tracking-widest">Recommended Reading</p>
                         </div>
                     </div>
-                    <button onClick={() => setViewingNote(null)} className="p-2 bg-slate-100 rounded-full hover:bg-slate-200"><X size={20}/></button>
+                    <div className="flex items-center gap-2">
+                         <button onClick={handleSpeakNote} className={`p-2 rounded-full transition-all ${isSpeakingNote ? 'bg-red-100 text-red-600 animate-pulse' : 'bg-slate-100 text-slate-600 hover:bg-slate-200'}`} title="Listen">
+                             {isSpeakingNote ? <StopCircle size={20} /> : <Play size={20} />}
+                         </button>
+                         <button onClick={() => { setViewingNote(null); stopSpeaking(); setIsSpeakingNote(false); }} className="p-2 bg-slate-100 rounded-full hover:bg-slate-200"><X size={20}/></button>
+                    </div>
                 </header>
                 <div className="flex-1 overflow-y-auto p-6 bg-slate-50">
                     <div className="max-w-3xl mx-auto bg-white p-6 rounded-3xl shadow-sm border border-slate-100 min-h-[50vh]">
                         <div className="flex items-center justify-between mb-6 border-b pb-4">
                              <h1 className="text-2xl font-black text-slate-900">{viewingNote.title}</h1>
-                             <SpeakButton text={`${viewingNote.title}. ${stripHtml(viewingNote.content || '')}`} className="p-2 bg-slate-100 rounded-full hover:bg-slate-200" iconSize={20} />
                         </div>
-                        <div className="prose prose-slate max-w-none prose-headings:font-black" dangerouslySetInnerHTML={{ __html: (viewingNote.content) }} />
+                        <div ref={viewingNoteRef} className="prose prose-slate max-w-none prose-headings:font-black" dangerouslySetInnerHTML={{ __html: (viewingNote.content) }} />
                     </div>
                 </div>
                 <div className="bg-white border-t border-slate-200 p-4 text-center">
