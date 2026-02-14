@@ -6,10 +6,13 @@ import { generateCustomNotes } from '../services/groq';
 import { saveAiInteraction } from '../firebase';
 import { CustomAlert } from './CustomDialogs';
 
+import { FileText, CheckSquare, Calendar, Zap, AlertCircle as AlertIcon } from 'lucide-react';
+
 interface Props {
     user: User;
     onTabChange: (tab: StudentTab) => void;
     settings?: SystemSettings;
+    onNavigateContent?: (type: 'PDF' | 'MCQ', chapterId: string) => void;
 }
 
 type TopicStatus = 'WEAK' | 'AVERAGE' | 'STRONG';
@@ -23,9 +26,9 @@ interface TopicItem {
     nextRevision: string; // ISO Date
 }
 
-export const RevisionHub: React.FC<Props> = ({ user, onTabChange, settings }) => {
+export const RevisionHub: React.FC<Props> = ({ user, onTabChange, settings, onNavigateContent }) => {
     const [topics, setTopics] = useState<TopicItem[]>([]);
-    const [filter, setFilter] = useState<'ALL' | 'WEAK' | 'AVERAGE' | 'STRONG'>('ALL');
+    const [activeFilter, setActiveFilter] = useState<'TODAY' | 'WEAK' | 'AVERAGE' | 'STRONG'>('TODAY');
 
     // AI Modal State
     const [showAiModal, setShowAiModal] = useState(false);
@@ -249,64 +252,110 @@ export const RevisionHub: React.FC<Props> = ({ user, onTabChange, settings }) =>
                 </button>
             </div>
 
-            {/* REVISION SCHEDULE */}
+            {/* FILTER BUTTONS */}
+            <div className="grid grid-cols-4 gap-2 mb-6 bg-slate-100 p-1 rounded-xl">
+                {[
+                    { id: 'TODAY', label: 'Today', icon: Calendar },
+                    { id: 'WEAK', label: 'Weak', icon: AlertIcon },
+                    { id: 'AVERAGE', label: 'Average', icon: TrendingUp },
+                    { id: 'STRONG', label: 'Strong', icon: CheckCircle }
+                ].map(tab => {
+                    const isActive = activeFilter === tab.id;
+                    const Icon = tab.icon;
+                    return (
+                        <button
+                            key={tab.id}
+                            onClick={() => setActiveFilter(tab.id as any)}
+                            className={`flex flex-col items-center justify-center py-2 px-1 rounded-lg text-[10px] font-bold transition-all ${
+                                isActive ? 'bg-white shadow-sm text-blue-600 scale-105' : 'text-slate-500 hover:bg-white/50'
+                            }`}
+                        >
+                            <Icon size={16} className={isActive ? 'mb-1 text-blue-600' : 'mb-1 text-slate-400'} />
+                            {tab.label}
+                        </button>
+                    );
+                })}
+            </div>
+
+            {/* TOPIC LIST */}
             <div>
-                <div className="flex items-center justify-between mb-4">
-                    <h3 className="font-bold text-slate-800 text-lg">Your Revision Plan</h3>
-                    <select
-                        value={filter}
-                        onChange={(e) => setFilter(e.target.value as any)}
-                        className="bg-white border border-slate-200 text-xs font-bold px-2 py-1 rounded-lg outline-none"
-                    >
-                        <option value="ALL">All Topics</option>
-                        <option value="WEAK">Weak (High Priority)</option>
-                        <option value="AVERAGE">Average</option>
-                        <option value="STRONG">Strong</option>
-                    </select>
-                </div>
+                <h3 className="font-black text-slate-800 text-lg mb-4 flex items-center gap-2">
+                    {activeFilter === 'TODAY' ? '🔥 Today\'s Tasks' :
+                     activeFilter === 'WEAK' ? '⚠️ Focus Areas' :
+                     activeFilter === 'AVERAGE' ? '📈 Improvements' : '💪 Mastered Topics'}
+                </h3>
 
-                {filteredTopics.length === 0 ? (
-                    <div className="text-center py-12 bg-slate-50 rounded-2xl border-2 border-dashed border-slate-200">
-                        <BookOpen className="mx-auto text-slate-300 mb-2" size={40} />
-                        <p className="text-slate-400 font-bold text-sm">No topics scheduled for revision yet.</p>
-                        <p className="text-xs text-slate-400 mt-1">Take some tests to generate data!</p>
-                    </div>
-                ) : (
-                    <div className="space-y-3">
-                        {filteredTopics.map((topic, idx) => {
-                            const due = new Date(topic.nextRevision);
-                            const now = new Date();
-                            const diffHours = (due.getTime() - now.getTime()) / (1000 * 60 * 60);
+                {(() => {
+                    let displayedTopics = topics;
+                    if (activeFilter === 'TODAY') {
+                        const now = new Date();
+                        displayedTopics = topics.filter(t => new Date(t.nextRevision) <= now || t.status === 'WEAK');
+                    } else {
+                        displayedTopics = topics.filter(t => t.status === activeFilter);
+                    }
 
-                            let dueLabel = '';
-                            if (diffHours < 0) dueLabel = 'Overdue';
-                            else if (diffHours < 24) dueLabel = 'Due Today';
-                            else dueLabel = `Due in ${Math.ceil(diffHours/24)} days`;
+                    if (displayedTopics.length === 0) {
+                        return (
+                            <div className="text-center py-12 bg-slate-50 rounded-2xl border-2 border-dashed border-slate-200">
+                                <BookOpen className="mx-auto text-slate-300 mb-2" size={40} />
+                                <p className="text-slate-400 font-bold text-sm">No topics found in this category.</p>
+                                <p className="text-xs text-slate-400 mt-1">Keep studying to populate your plan!</p>
+                            </div>
+                        );
+                    }
 
-                            return (
-                                <div key={idx} className="bg-white p-4 rounded-xl border border-slate-100 shadow-sm hover:shadow-md transition-all flex items-center justify-between">
-                                    <div>
-                                        <h4 className="font-bold text-slate-800 text-sm truncate max-w-[200px]">{topic.name}</h4>
-                                        <div className="flex items-center gap-2 mt-1">
-                                            <span className={`text-[10px] font-black px-2 py-0.5 rounded flex items-center gap-1 border ${getStatusColor(topic.status)}`}>
-                                                {getStatusIcon(topic.status)} {topic.status}
-                                            </span>
-                                            <span className={`text-[10px] font-bold ${diffHours < 24 ? 'text-red-500 animate-pulse' : 'text-slate-400'}`}>
-                                                <Clock size={10} className="inline mr-1" /> {dueLabel}
-                                            </span>
+                    return (
+                        <div className="space-y-3">
+                            {displayedTopics.map((topic, idx) => {
+                                const due = new Date(topic.nextRevision);
+                                const now = new Date();
+                                const diffHours = (due.getTime() - now.getTime()) / (1000 * 60 * 60);
+
+                                let dueLabel = '';
+                                if (diffHours < 0) dueLabel = 'Overdue';
+                                else if (diffHours < 24) dueLabel = 'Due Today';
+                                else dueLabel = `Due: ${due.toLocaleDateString()}`;
+
+                                return (
+                                    <div key={idx} className="bg-white p-4 rounded-xl border border-slate-100 shadow-sm hover:shadow-md transition-all">
+                                        <div className="flex justify-between items-start mb-3">
+                                            <div className="overflow-hidden">
+                                                <h4 className="font-bold text-slate-800 text-sm truncate">{topic.name}</h4>
+                                                <div className="flex items-center gap-2 mt-1">
+                                                    <span className={`text-[10px] font-black px-2 py-0.5 rounded flex items-center gap-1 border ${getStatusColor(topic.status)}`}>
+                                                        {getStatusIcon(topic.status)} {topic.status}
+                                                    </span>
+                                                    <span className={`text-[10px] font-bold ${diffHours < 24 ? 'text-red-500 animate-pulse' : 'text-slate-400'}`}>
+                                                        <Clock size={10} className="inline mr-1" /> {dueLabel}
+                                                    </span>
+                                                </div>
+                                            </div>
+                                            <div className="text-right">
+                                                <div className="text-xs font-black text-slate-700">{Math.round(topic.score)}%</div>
+                                                <div className="text-[9px] text-slate-400 font-medium">Score</div>
+                                            </div>
+                                        </div>
+
+                                        <div className="grid grid-cols-2 gap-2">
+                                            <button
+                                                onClick={() => onNavigateContent ? onNavigateContent('PDF', topic.id) : null}
+                                                className="bg-blue-50 text-blue-600 py-2 rounded-lg text-xs font-bold hover:bg-blue-600 hover:text-white transition-colors flex items-center justify-center gap-1"
+                                            >
+                                                <FileText size={14} /> Notes
+                                            </button>
+                                            <button
+                                                onClick={() => onNavigateContent ? onNavigateContent('MCQ', topic.id) : null}
+                                                className="bg-indigo-50 text-indigo-600 py-2 rounded-lg text-xs font-bold hover:bg-indigo-600 hover:text-white transition-colors flex items-center justify-center gap-1"
+                                            >
+                                                <CheckSquare size={14} /> Test
+                                            </button>
                                         </div>
                                     </div>
-                                    <button
-                                        onClick={() => onTabChange('MCQ')}
-                                        className="bg-indigo-50 text-indigo-600 p-2 rounded-full hover:bg-indigo-600 hover:text-white transition-colors"
-                                    >
-                                        <ArrowRight size={18} />
-                                    </button>
-                                </div>
-                            );
-                        })}
-                    </div>
-                )}
+                                );
+                            })}
+                        </div>
+                    );
+                })()}
             </div>
 
             {/* AI NOTES MODAL */}
