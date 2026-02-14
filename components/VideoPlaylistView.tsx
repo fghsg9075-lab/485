@@ -367,50 +367,74 @@ export const VideoPlaylistView: React.FC<Props> = ({
                                key={idx}
                                className={`group relative overflow-hidden rounded-2xl border transition-all ${
                                    isActive 
-                                   ? 'bg-red-50 border-red-200 shadow-md ring-1 ring-red-200' 
-                                   : 'bg-white border-slate-200 hover:shadow-lg'
+                                   ? 'bg-gradient-to-br from-red-50 to-white border-red-200 shadow-md ring-2 ring-red-100'
+                                   : 'bg-white border-slate-100 hover:shadow-xl hover:-translate-y-1'
                                }`}
                            >
-                               {/* THUMBNAIL AREA (Simulated) */}
-                               <div className="aspect-video bg-slate-800 relative">
+                               {/* THUMBNAIL AREA (Gradient Placeholder) */}
+                               <div className={`aspect-video relative ${isActive ? 'bg-slate-900' : 'bg-gradient-to-br from-slate-800 via-slate-900 to-black'}`}>
+
+                                   {/* Status Badge */}
+                                   <div className="absolute top-2 left-2 z-20">
+                                       {isFree ? (
+                                           <span className="bg-green-500/90 backdrop-blur text-white text-[9px] font-black px-2 py-0.5 rounded shadow-sm">FREE</span>
+                                       ) : (
+                                           <span className="bg-yellow-500/90 backdrop-blur text-white text-[9px] font-black px-2 py-0.5 rounded shadow-sm flex items-center gap-1">
+                                               <Crown size={8} fill="currentColor" /> PREMIUM
+                                           </span>
+                                       )}
+                                   </div>
+
+                                   {/* Locked Overlay */}
                                    {!isFree && !isActive && (
-                                       <div className="absolute inset-0 bg-black/60 flex flex-col items-center justify-center z-10 backdrop-blur-[1px]">
-                                           <Lock size={32} className="text-white/80 mb-1" />
-                                           <span className="text-[10px] font-bold text-white uppercase tracking-wider">Locked</span>
+                                       <div className="absolute inset-0 bg-black/40 flex flex-col items-center justify-center z-10 backdrop-blur-[2px] transition-opacity group-hover:opacity-80">
+                                           <div className="w-10 h-10 rounded-full bg-white/10 backdrop-blur flex items-center justify-center mb-1">
+                                               <Lock size={20} className="text-white" />
+                                           </div>
+                                           <span className="text-[10px] font-black text-white uppercase tracking-widest text-shadow">Locked Content</span>
                                        </div>
                                    )}
-                                   <div className="absolute inset-0 flex items-center justify-center">
-                                       <PlayCircle size={48} className="text-white/50 group-hover:text-white transition-colors" />
+
+                                   {/* Play Icon */}
+                                   <div className="absolute inset-0 flex items-center justify-center transition-transform group-hover:scale-110">
+                                       <div className={`w-12 h-12 rounded-full flex items-center justify-center shadow-2xl ${isActive ? 'bg-red-600 text-white animate-pulse' : 'bg-white/20 backdrop-blur-sm text-white group-hover:bg-white group-hover:text-red-600 transition-colors'}`}>
+                                           <PlayCircle size={isActive ? 24 : 32} fill="currentColor" />
+                                       </div>
                                    </div>
                                </div>
 
                                {/* CONTENT AREA */}
-                               <div className="p-3">
-                                   <h5 className="font-bold text-sm text-slate-800 line-clamp-2 leading-snug mb-2">
-                                       {vid.title || `Video Lecture ${idx + 1}`}
-                                   </h5>
+                               <div className="p-4">
+                                   <div className="flex justify-between items-start gap-2 mb-3">
+                                       <h5 className={`font-bold text-sm line-clamp-2 leading-snug ${isActive ? 'text-red-700' : 'text-slate-800 group-hover:text-red-600 transition-colors'}`}>
+                                           {vid.title || `Video Lecture ${idx + 1}`}
+                                       </h5>
+                                       {isActive && <div className="shrink-0 w-2 h-2 rounded-full bg-red-500 animate-ping mt-1.5"></div>}
+                                   </div>
                                    
                                    {isFree || isActive ? (
                                        <button 
                                            onClick={() => handleVideoClick(idx)}
-                                           className="w-full py-2 bg-green-600 hover:bg-green-700 text-white font-bold rounded-lg text-xs flex items-center justify-center gap-2"
+                                           className="w-full py-2.5 bg-slate-900 hover:bg-slate-800 text-white font-bold rounded-xl text-xs flex items-center justify-center gap-2 shadow-lg shadow-slate-200 transition-all active:scale-95"
                                        >
-                                           <PlayCircle size={14} /> Play Now
+                                           <PlayCircle size={16} className={isActive ? "animate-spin-slow" : ""} />
+                                           {isActive ? 'Playing Now' : 'Watch Video'}
                                        </button>
                                    ) : (
-                                       <div className="flex gap-2">
+                                       <div className="grid grid-cols-2 gap-2">
                                            <button 
                                                onClick={() => handleVideoClick(idx)}
-                                               className="flex-1 py-2 bg-yellow-100 hover:bg-yellow-200 text-yellow-800 font-bold rounded-lg text-[10px] flex items-center justify-center gap-1"
+                                               className="py-2 bg-yellow-50 hover:bg-yellow-100 border border-yellow-200 text-yellow-700 font-bold rounded-xl text-[10px] flex flex-col items-center justify-center transition-colors"
                                            >
-                                               <span className="w-4 h-4 bg-yellow-400 rounded-full flex items-center justify-center text-white text-[8px]">🟡</span>
-                                               Play ({price} CR)
+                                               <span className="text-[14px] leading-none mb-0.5">{price} CR</span>
+                                               <span className="opacity-70">Pay Per View</span>
                                            </button>
                                            <button 
                                                onClick={() => setAlertConfig({isOpen: true, message: "Go to Store to buy Ultra Subscription!"})}
-                                               className="flex-1 py-2 bg-slate-900 hover:bg-slate-800 text-white font-bold rounded-lg text-[10px] flex items-center justify-center gap-1"
+                                               className="py-2 bg-gradient-to-br from-slate-900 to-slate-800 hover:from-slate-800 hover:to-slate-700 text-white font-bold rounded-xl text-[10px] flex flex-col items-center justify-center shadow-lg transition-all"
                                            >
-                                               <span>👑</span> Unlock Ultra
+                                               <Crown size={14} className="text-yellow-400 mb-0.5" fill="currentColor" />
+                                               <span>Get Ultra</span>
                                            </button>
                                        </div>
                                    )}

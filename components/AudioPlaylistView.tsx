@@ -221,30 +221,39 @@ export const AudioPlaylistView: React.FC<Props> = ({
                            <div 
                                key={idx}
                                onClick={() => handleTrackClick(idx)}
-                               className={`group relative overflow-hidden rounded-xl border p-4 flex items-center gap-4 transition-all cursor-pointer ${
+                               className={`group relative overflow-hidden rounded-2xl border p-4 flex items-center gap-4 transition-all cursor-pointer ${
                                    !isLocked 
-                                   ? 'bg-white border-slate-200 hover:border-purple-200 hover:shadow-md' 
-                                   : 'bg-slate-50 border-slate-100 opacity-90'
+                                   ? 'bg-white border-slate-100 hover:border-purple-300 hover:shadow-lg hover:-translate-y-0.5'
+                                   : 'bg-slate-50 border-slate-200 opacity-80 grayscale'
                                }`}
                            >
-                               <div className={`w-12 h-12 rounded-full flex items-center justify-center shrink-0 ${!isLocked ? 'bg-purple-100 text-purple-600' : 'bg-slate-200 text-slate-400'}`}>
-                                   {!isLocked ? <Play size={20} fill="currentColor" /> : <Lock size={20} />}
+                               <div className={`w-14 h-14 rounded-2xl flex items-center justify-center shrink-0 shadow-sm transition-all group-hover:scale-105 ${!isLocked ? 'bg-gradient-to-br from-purple-100 to-fuchsia-50 text-purple-600' : 'bg-slate-200 text-slate-400'}`}>
+                                   {!isLocked ? <Play size={24} fill="currentColor" className="ml-1" /> : <Lock size={24} />}
                                </div>
                                
-                               <div className="flex-1">
+                               <div className="flex-1 min-w-0">
                                    <div className="flex items-center gap-2 mb-1">
-                                       <h5 className="font-bold text-slate-800 line-clamp-1">{track.title || `Track ${idx + 1}`}</h5>
-                                       {track.access === 'ULTRA' && <span className="text-[9px] font-black bg-slate-900 text-white px-1.5 py-0.5 rounded">STUDIO HD</span>}
+                                       <h5 className={`font-black text-sm truncate ${!isLocked ? 'text-slate-800 group-hover:text-purple-700' : 'text-slate-500'}`}>{track.title || `Track ${idx + 1}`}</h5>
+                                       {track.access === 'ULTRA' && <span className="text-[9px] font-black bg-slate-900 text-white px-1.5 py-0.5 rounded border border-slate-700">HD</span>}
                                    </div>
-                                   <p className="text-xs text-slate-500 flex items-center gap-1">
-                                       <BarChart2 size={12} /> {isLocked ? 'Locked' : 'Ready to Play'}
-                                   </p>
+                                   <div className="flex items-center gap-3">
+                                       <span className={`text-[10px] font-bold flex items-center gap-1 ${!isLocked ? 'text-green-600' : 'text-slate-400'}`}>
+                                           <BarChart2 size={10} className={!isLocked ? "animate-pulse" : ""} />
+                                           {isLocked ? 'Locked Content' : 'Listen Now'}
+                                       </span>
+                                       <span className="text-[10px] text-slate-300">|</span>
+                                       <span className="text-[10px] font-medium text-slate-400">Audio Series</span>
+                                   </div>
                                </div>
 
-                               {isLocked && (
-                                   <div className="flex flex-col items-end">
-                                       <span className="text-xs font-black text-slate-700">{price} CR</span>
-                                       <span className="text-[10px] text-slate-400">Unlock</span>
+                               {isLocked ? (
+                                   <div className="flex flex-col items-center justify-center bg-white border border-slate-200 rounded-xl px-3 py-2 shadow-sm min-w-[70px]">
+                                       <span className="text-xs font-black text-slate-800">{price} CR</span>
+                                       <span className="text-[9px] font-bold text-purple-600 uppercase tracking-wider">Unlock</span>
+                                   </div>
+                               ) : (
+                                   <div className="w-10 h-10 rounded-full bg-purple-50 text-purple-600 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity transform translate-x-2 group-hover:translate-x-0">
+                                       <Headphones size={20} />
                                    </div>
                                )}
                            </div>

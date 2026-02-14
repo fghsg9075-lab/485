@@ -1383,11 +1383,30 @@ export const StudentDashboard: React.FC<Props> = ({ user, dailyStudySeconds, onS
                         )}
                         
                         <div className="mt-4 relative z-10">
-                            <span className={`px-4 py-1 rounded-full text-xs font-bold uppercase tracking-widest shadow-lg ${
-                                user.subscriptionLevel === 'ULTRA' && user.isPremium ? 'bg-purple-500 text-white border border-purple-300' : 
-                                user.subscriptionLevel === 'BASIC' && user.isPremium ? 'bg-cyan-500 text-white' : 'bg-slate-600 text-slate-300'
+                            <span className={`px-6 py-2 rounded-full text-sm font-black uppercase tracking-widest shadow-lg shadow-black/20 border-2 ${
+                                user.subscriptionLevel === 'ULTRA' && user.isPremium ? 'bg-purple-500 text-white border-purple-300 animate-pulse' :
+                                user.subscriptionLevel === 'BASIC' && user.isPremium ? 'bg-cyan-500 text-white border-cyan-300' : 'bg-slate-600 text-slate-400 border-slate-500'
                             }`}>
-                                {user.isPremium ? `✨ ${user.subscriptionLevel} MEMBER ✨` : 'Free User'}
+                                {user.isPremium
+                                    ? (() => {
+                                        const tier = user.subscriptionTier;
+                                        let displayTier = 'PREMIUM';
+
+                                        if (tier === 'WEEKLY') displayTier = 'Weekly';
+                                        else if (tier === 'MONTHLY') displayTier = 'Monthly';
+                                        else if (tier === 'YEARLY') displayTier = 'Yearly';
+                                        else if (tier === 'LIFETIME') displayTier = 'Yearly Plus'; // Mapped as per user request
+                                        else if (tier === '3_MONTHLY') displayTier = 'Quarterly';
+                                        else if (tier === 'CUSTOM') displayTier = 'Custom Plan';
+
+                                        return (
+                                            <span className="drop-shadow-[0_0_8px_rgba(255,255,255,0.8)]">
+                                                {displayTier} {user.subscriptionLevel}
+                                            </span>
+                                        );
+                                    })()
+                                    : 'Free User'
+                                }
                             </span>
                         </div>
                     </div>
