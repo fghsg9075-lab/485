@@ -8,3 +8,5 @@
   ➜  Local:   http://localhost:5000/
   ➜  Network: http://192.168.0.2:5000/
 [BABEL] Note: The code generator has deoptimised the styling of /app/components/AdminDashboard.tsx as it exceeds the max of 500KB.
+6:32:23 AM [vite] (client) hmr update /components/AdminDashboard.tsx
+[BABEL] Note: The code generator has deoptimised the styling of /app/components/AdminDashboard.tsx as it exceeds the max of 500KB.

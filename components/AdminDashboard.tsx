@@ -7539,12 +7539,26 @@ Capital of India?       Mumbai  Delhi   Kolkata Chennai 2       Delhi is the cap
               <div className="space-y-4 max-h-[60vh] overflow-y-auto">
                   {localSettings.subscriptionPlans?.map((plan, idx) => (
                       <div key={plan.id} className="bg-slate-50 p-4 rounded-xl border border-slate-200">
-                          <div className="flex justify-between mb-2">
-                              <h4 className="font-bold text-slate-800">{plan.name} Plan</h4>
+                          <div className="flex justify-between items-end gap-4 mb-3">
+                              <div className="flex-1">
+                                  <label className="text-[10px] font-bold text-slate-500 uppercase block mb-1">Plan Name</label>
+                                  <input
+                                      type="text"
+                                      value={plan.name}
+                                      onChange={e => {
+                                          const updated = [...localSettings.subscriptionPlans!];
+                                          updated[idx].name = e.target.value;
+                                          setLocalSettings({...localSettings, subscriptionPlans: updated});
+                                      }}
+                                      className="w-full p-2 border rounded-lg text-sm bg-white font-bold text-slate-800"
+                                      placeholder="Plan Name"
+                                  />
+                              </div>
                               <button onClick={() => {
+                                  if(!confirm("Delete this plan?")) return;
                                   const updated = localSettings.subscriptionPlans!.filter((_, i) => i !== idx);
                                   setLocalSettings({...localSettings, subscriptionPlans: updated});
-                              }} className="text-red-500 hover:text-red-700"><Trash2 size={16} /></button>
+                              }} className="text-red-500 hover:text-red-700 mb-2 p-2 bg-red-50 rounded-lg"><Trash2 size={18} /></button>
                           </div>
                           
                           <div className="grid grid-cols-2 gap-3 mb-3">
