@@ -773,7 +773,7 @@ export const PdfView: React.FC<Props> = ({
                    })()}
 
                    {/* TOPIC NOTES SECTION */}
-                   {contentData.topicNotes && contentData.topicNotes.length > 0 && (() => {
+                   {contentData.topicNotes && contentData.topicNotes.length > 0 && !contentData.isTopicNotesHidden && (() => {
                        const notes = contentData.topicNotes;
                        // Group by Topic
                        const grouped: Record<string, any[]> = {};

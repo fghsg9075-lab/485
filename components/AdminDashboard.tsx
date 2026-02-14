@@ -4458,10 +4458,23 @@ Capital of India?       Mumbai  Delhi   Kolkata Chennai 2       Delhi is the cap
 
                                   <button
                                       onClick={() => setTopicNotes([...topicNotes, { id: Date.now().toString(), title: '', topic: '', content: '', isPremium: false }])}
-                                      className="w-full py-2 bg-white border border-orange-300 text-orange-600 font-bold rounded-lg hover:bg-orange-50 border-dashed"
+                                      className="w-full py-2 bg-white border border-orange-300 text-orange-600 font-bold rounded-lg hover:bg-orange-50 border-dashed mb-4"
                                   >
                                       + Add Topic Note
                                   </button>
+
+                                  <div className="flex items-center gap-2 bg-white p-3 rounded-xl border border-orange-100">
+                                      <input
+                                          type="checkbox"
+                                          checked={editConfig.isTopicNotesHidden || false}
+                                          onChange={e => setEditConfig({...editConfig, isTopicNotesHidden: e.target.checked})}
+                                          className="accent-orange-600 w-5 h-5"
+                                      />
+                                      <div>
+                                          <span className="text-xs font-bold text-slate-700 block">Hide Topic Notes from List</span>
+                                          <span className="text-[10px] text-slate-400">If checked, these notes will NOT appear in the Lesson View list, but will still be available for AI Recommendations.</span>
+                                      </div>
+                                  </div>
                               </div>
 
                               <div className="flex gap-2">
