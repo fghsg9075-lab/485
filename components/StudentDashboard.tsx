@@ -582,26 +582,48 @@ export const StudentDashboard: React.FC<Props> = ({ user, dailyStudySeconds, onS
           } else if (gift.type === 'SUBSCRIPTION') {
               const [tier, level] = (gift.value as string).split('_');
               const duration = gift.durationHours || 24;
-              const endDate = new Date(Date.now() + duration * 60 * 60 * 1000).toISOString();
               
-              updatedUser.subscriptionTier = tier as any;
-              updatedUser.subscriptionLevel = level as any;
-              updatedUser.subscriptionEndDate = endDate;
-              updatedUser.isPremium = true;
+              const now = new Date();
+              const currentEnd = user.subscriptionEndDate ? new Date(user.subscriptionEndDate) : now;
+              const isActive = user.isPremium && currentEnd > now;
               
-              successMsg = `🎁 Gift Claimed! ${tier} ${level} unlocked for ${duration} hours.`;
+              let newEndDate = new Date(now.getTime() + duration * 60 * 60 * 1000);
+
+              if (isActive) {
+                  // Extend existing duration
+                  newEndDate = new Date(currentEnd.getTime() + duration * 60 * 60 * 1000);
+                  updatedUser.subscriptionEndDate = newEndDate.toISOString();
+                  // Keep existing Tier/Level to prevent downgrade
+                  successMsg = `🎁 Gift Claimed! Extended your plan by ${duration} hours.`;
+              } else {
+                  updatedUser.subscriptionTier = tier as any;
+                  updatedUser.subscriptionLevel = level as any;
+                  updatedUser.subscriptionEndDate = newEndDate.toISOString();
+                  updatedUser.isPremium = true;
+                  successMsg = `🎁 Gift Claimed! ${tier} ${level} unlocked for ${duration} hours.`;
+              }
           }
       } else if (reward) {
           // HANDLE AUTO REWARD
           const duration = reward.durationHours || 4;
-          const endDate = new Date(Date.now() + duration * 60 * 60 * 1000).toISOString();
           
-          updatedUser.subscriptionTier = reward.tier;
-          updatedUser.subscriptionLevel = reward.level;
-          updatedUser.subscriptionEndDate = endDate;
-          updatedUser.isPremium = true;
+          const now = new Date();
+          const currentEnd = user.subscriptionEndDate ? new Date(user.subscriptionEndDate) : now;
+          const isActive = user.isPremium && currentEnd > now;
           
-          successMsg = `✅ Reward Claimed! Enjoy ${duration} hours of ${reward.level} access.`;
+          let newEndDate = new Date(now.getTime() + duration * 60 * 60 * 1000);
+
+          if (isActive) {
+              newEndDate = new Date(currentEnd.getTime() + duration * 60 * 60 * 1000);
+              updatedUser.subscriptionEndDate = newEndDate.toISOString();
+              successMsg = `✅ Reward Claimed! Extended access by ${duration} hours.`;
+          } else {
+              updatedUser.subscriptionTier = reward.tier;
+              updatedUser.subscriptionLevel = reward.level;
+              updatedUser.subscriptionEndDate = newEndDate.toISOString();
+              updatedUser.isPremium = true;
+              successMsg = `✅ Reward Claimed! Enjoy ${duration} hours of ${reward.level} access.`;
+          }
       }
       
       handleUserUpdate(updatedUser);
