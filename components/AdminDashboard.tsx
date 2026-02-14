@@ -12,6 +12,27 @@ import { storage } from '../utils/storage';
 import { SimpleRichTextEditor } from './SimpleRichTextEditor';
 import { ImageCropper } from './ImageCropper';
 import { DEFAULT_SYLLABUS, MonthlySyllabus } from '../syllabus_data';
+
+const DEFAULT_BASIC_FEATURES = [
+    'Daily Login Bonus: 10 Credits/Day',
+    'Full MCQs Unlocked',
+    'Premium Notes (Standard)',
+    'Audio Library (Standard)',
+    'AI Videos (2D Basic)',
+    'Team Support',
+    'Spin Wheel (5 Spins/Day)'
+];
+
+const DEFAULT_ULTRA_FEATURES = [
+    'Daily Login Bonus: 20 Credits/Day',
+    'Everything in Basic Unlocked',
+    'Premium Notes (Deep Dive)',
+    'Ultra Podcast (Studio HD)',
+    'AI Videos (2D + 3D Deep Dive)',
+    'Competitive Mode Unlocked 🏆',
+    'Spin Wheel (10 Spins/Day)'
+];
+
 import { CustomAlert } from './CustomDialogs';
 import { UniversalChat } from './UniversalChat';
 import { ChallengeCreator20 } from './admin/ChallengeCreator20';
@@ -7521,7 +7542,16 @@ Capital of India?       Mumbai  Delhi   Kolkata Chennai 2       Delhi is the cap
                   {localSettings.subscriptionPlans?.map((plan, idx) => (
                       <div key={plan.id} className="bg-slate-50 p-4 rounded-xl border border-slate-200">
                           <div className="flex justify-between mb-2">
-                              <h4 className="font-bold text-slate-800">{plan.name} Plan</h4>
+                              <input
+                                  type="text"
+                                  value={plan.name}
+                                  onChange={e => {
+                                      const updated = [...localSettings.subscriptionPlans!];
+                                      updated[idx].name = e.target.value;
+                                      setLocalSettings({...localSettings, subscriptionPlans: updated});
+                                  }}
+                                  className="font-bold text-slate-800 bg-transparent border-b border-dashed border-slate-300 focus:border-blue-500 outline-none"
+                              />
                               <button onClick={() => {
                                   const updated = localSettings.subscriptionPlans!.filter((_, i) => i !== idx);
                                   setLocalSettings({...localSettings, subscriptionPlans: updated});
@@ -8713,6 +8743,18 @@ Capital of India?       Mumbai  Delhi   Kolkata Chennai 2       Delhi is the cap
                               })}
                               placeholder="One feature per line..."
                           />
+                          <button
+                              onClick={() => setLocalSettings({
+                                  ...localSettings,
+                                  storeFeatures: {
+                                      ...localSettings.storeFeatures,
+                                      basic: DEFAULT_BASIC_FEATURES
+                                  }
+                              })}
+                              className="text-[10px] text-blue-500 underline mt-1"
+                          >
+                              Reset to Default
+                          </button>
                       </div>
 
                       {/* ULTRA FEATURES */}
@@ -8730,6 +8772,18 @@ Capital of India?       Mumbai  Delhi   Kolkata Chennai 2       Delhi is the cap
                               })}
                               placeholder="One feature per line..."
                           />
+                          <button
+                              onClick={() => setLocalSettings({
+                                  ...localSettings,
+                                  storeFeatures: {
+                                      ...localSettings.storeFeatures,
+                                      ultra: DEFAULT_ULTRA_FEATURES
+                                  }
+                              })}
+                              className="text-[10px] text-purple-500 underline mt-1"
+                          >
+                              Reset to Default
+                          </button>
                       </div>
                   </div>
                   <div className="mt-4 text-right">
