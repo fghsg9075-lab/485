@@ -24,6 +24,8 @@ interface TopicItem {
     lastAttempt: string;
     status: TopicStatus;
     nextRevision: string; // ISO Date
+    ultraAnalysisReport?: string;
+    subjectName?: string;
 }
 
 export const RevisionHub: React.FC<Props> = ({ user, onTabChange, settings, onNavigateContent }) => {
@@ -150,7 +152,8 @@ export const RevisionHub: React.FC<Props> = ({ user, onTabChange, settings, onNa
                 lastAttempt: result.date,
                 status,
                 nextRevision: nextRev.toISOString(),
-                subjectName: result.subjectName
+                subjectName: result.subjectName,
+                ultraAnalysisReport: result.ultraAnalysisReport
             });
         });
 
@@ -247,6 +250,27 @@ export const RevisionHub: React.FC<Props> = ({ user, onTabChange, settings, onNa
                             title: 'AI Personal Tutor',
                             subtitle: 'Instant Doubt Solving',
                             link: 'AI_CHAT'
+                        },
+                        {
+                            id: 'ultra_video',
+                            image: 'https://img.freepik.com/free-vector/video-tutorials-concept-illustration_114360-1557.jpg',
+                            title: 'Ultra Video Classes',
+                            subtitle: 'Learn with Visuals',
+                            link: 'VIDEO'
+                        },
+                        {
+                            id: 'ultra_audio',
+                            image: 'https://img.freepik.com/free-vector/podcast-concept-illustration_114360-1049.jpg',
+                            title: 'Ultra Audio Learning',
+                            subtitle: 'Listen & Learn',
+                            link: 'AUDIO'
+                        },
+                        {
+                            id: 'subscription',
+                            image: 'https://img.freepik.com/free-vector/subscription-model-concept-illustration_114360-6395.jpg',
+                            title: 'Premium Subscription',
+                            subtitle: 'Unlock All Features',
+                            link: 'STORE'
                         },
                         {
                             id: 'ai_agent',
@@ -417,6 +441,19 @@ export const RevisionHub: React.FC<Props> = ({ user, onTabChange, settings, onNa
 
                                 const isExpanded = expandedChapterId === topic.id;
 
+                                // Parse Ultra Analysis for Topic Breakdown
+                                let subTopicsStats: any[] = [];
+                                if (topic.ultraAnalysisReport) {
+                                    try {
+                                        const parsed = JSON.parse(topic.ultraAnalysisReport);
+                                        if (parsed.topics && Array.isArray(parsed.topics)) {
+                                            subTopicsStats = parsed.topics;
+                                        }
+                                    } catch (e) {
+                                        // Ignore parse error
+                                    }
+                                }
+
                                 return (
                                     <div key={idx} className="bg-white p-4 rounded-xl border border-slate-100 shadow-sm hover:shadow-md transition-all relative overflow-hidden">
                                         {/* Status Stripe */}
@@ -450,7 +487,36 @@ export const RevisionHub: React.FC<Props> = ({ user, onTabChange, settings, onNa
                                             </div>
                                         </div>
 
-                                        {/* Main Action Buttons (Chapter Level) - ONLY SHOW IF DUE */}
+                                        {/* SUB-TOPIC BREAKDOWN (OMR STYLE) */}
+                                        {subTopicsStats.length > 0 && (
+                                            <div className="mt-3 mb-4 bg-slate-50 p-3 rounded-lg border border-slate-100">
+                                                <h5 className="text-[10px] font-black uppercase text-slate-500 mb-2">Topic Breakdown</h5>
+                                                <div className="space-y-2">
+                                                    {subTopicsStats.map((t: any, i: number) => {
+                                                        let color = 'bg-blue-500';
+                                                        let width = '60%';
+
+                                                        if (t.status === 'WEAK') { color = 'bg-red-500'; width = '30%'; }
+                                                        else if (t.status === 'STRONG') { color = 'bg-green-500'; width = '90%'; }
+                                                        else { color = 'bg-orange-500'; width = '60%'; }
+
+                                                        return (
+                                                            <div key={i}>
+                                                                <div className="flex justify-between items-center text-[10px] mb-1">
+                                                                    <span className="font-bold text-slate-700 truncate max-w-[70%]">{t.name}</span>
+                                                                    <span className={`font-bold ${t.status === 'WEAK' ? 'text-red-500' : t.status === 'STRONG' ? 'text-green-600' : 'text-orange-500'}`}>{t.status}</span>
+                                                                </div>
+                                                                <div className="h-1.5 w-full bg-slate-200 rounded-full overflow-hidden">
+                                                                    <div className={`h-full ${color} transition-all duration-500`} style={{width}}></div>
+                                                                </div>
+                                                            </div>
+                                                        )
+                                                    })}
+                                                </div>
+                                            </div>
+                                        )}
+
+                                        {/* Main Action Buttons (Chapter Level) */}
                                         <div className="mb-2">
                                             {isDue ? (
                                                 <button
@@ -460,9 +526,12 @@ export const RevisionHub: React.FC<Props> = ({ user, onTabChange, settings, onNa
                                                     <FileText size={16} /> Read Chapter Notes
                                                 </button>
                                             ) : (
-                                                <div className="w-full bg-slate-100 text-slate-400 py-3 rounded-lg text-xs font-bold flex items-center justify-center gap-2 cursor-not-allowed border border-slate-200">
-                                                    <Clock size={16} /> Available in {diffDays} Days
-                                                </div>
+                                                <button
+                                                    onClick={() => onNavigateContent ? onNavigateContent('PDF', topic.id, undefined, topic.subjectName) : null}
+                                                    className="w-full bg-white text-blue-600 border border-blue-200 py-3 rounded-lg text-xs font-bold hover:bg-blue-50 transition-all flex items-center justify-center gap-2 active:scale-95"
+                                                >
+                                                    <Clock size={16} /> Revise Early ({diffDays} Days Left)
+                                                </button>
                                             )}
                                         </div>
 
@@ -474,7 +543,7 @@ export const RevisionHub: React.FC<Props> = ({ user, onTabChange, settings, onNa
                                             {isExpanded ? (
                                                 <>Collapse Topics <ChevronUp size={12} /></>
                                             ) : (
-                                                <>View Topics breakdown <ChevronDown size={12} /></>
+                                                <>View Sub-Topics <ChevronDown size={12} /></>
                                             )}
                                         </button>
 
