@@ -773,11 +773,7 @@ export const PdfView: React.FC<Props> = ({
                    })()}
 
                    {/* TOPIC NOTES SECTION */}
- fix-admin-list-ref-and-topic-notes-toggle-6480143259488591248
                    {contentData.topicNotes && contentData.topicNotes.length > 0 && !contentData.isTopicNotesHidden && !settings?.areTopicNotesHiddenGlobally && (() => {
-
-                   {contentData.topicNotes && contentData.topicNotes.length > 0 && !contentData.isTopicNotesHidden && (settings?.contentVisibility?.TOPIC_NOTES !== false) && (() => {
- main
                        const notes = contentData.topicNotes;
                        // Group by Topic
                        const grouped: Record<string, any[]> = {};
