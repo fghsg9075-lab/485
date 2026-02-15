@@ -798,7 +798,41 @@ export const PdfView: React.FC<Props> = ({
                            const normalize = (s: string) => s.trim().toLowerCase();
                            const target = normalize(topicFilter);
 
+ revision-hub-revamp-2190173471545668082
                            topics = topics.filter(t => normalize(t) === target || normalize(t).includes(target) || target.includes(normalize(t)));
+
+                           // Revision Filter: Sort HTML first, but KEEP PDF
+                           topics = topics.filter(t => {
+                               const match = normalize(t) === target || normalize(t).includes(target) || target.includes(normalize(t));
+                               if (!match) return false;
+
+                               // Sort: HTML content first, then PDF
+                               grouped[t].sort((a, b) => {
+                                   const isAHtml = a.type === 'HTML' || a.content;
+                                   const isBHtml = b.type === 'HTML' || b.content;
+                                   if (isAHtml && !isBHtml) return -1;
+                                   if (!isAHtml && isBHtml) return 1;
+                                   return 0;
+                               });
+
+                               return true;
+                           });
+
+                           if (topics.length === 0) {
+                               // FALLBACK: If strict filter fails, show all topics with a warning
+                               // This prevents "Dummy" screen when AI name doesn't match Admin name exactly
+                               topics = Object.keys(grouped);
+
+                               return (
+                                   <div className="space-y-4 mt-6">
+                                       <div className="p-4 bg-yellow-50 text-yellow-700 text-sm font-medium rounded-xl border border-yellow-200 flex items-start gap-2">
+                                           <AlertCircle size={16} className="mt-0.5 shrink-0" />
+                                           <div>
+                                               <p className="font-bold">Exact match not found for: "{topicFilter}"</p>
+                                               <p className="text-xs mt-1">Showing all notes for this chapter. Please select the relevant topic below.</p>
+                                           </div>
+                                       </div>
+ main
 
                            if (topics.length === 0) return (
                                <div className="mt-6 p-4 text-center text-slate-400 text-sm font-bold bg-slate-100 rounded-xl">

@@ -1,7 +1,7 @@
 
 import React, { useState, useEffect } from 'react';
 import { Chapter, User, Subject, SystemSettings, MCQResult, PerformanceTag } from '../types';
-import { CheckCircle, Lock, ArrowLeft, Crown, PlayCircle, HelpCircle, Trophy, Clock, BrainCircuit, FileText } from 'lucide-react';
+import { CheckCircle, Lock, ArrowLeft, Crown, PlayCircle, HelpCircle, Trophy, Clock, BrainCircuit, FileText, X } from 'lucide-react';
 import { CustomAlert, CustomConfirm } from './CustomDialogs';
 import { getChapterData, saveUserToLive, saveUserHistory, savePublicActivity } from '../firebase';
 import { generateLocalAnalysis } from '../utils/analysisUtils';
@@ -42,6 +42,28 @@ export const McqView: React.FC<Props> = ({
   // Interstitial State
   const [showInterstitial, setShowInterstitial] = useState(false);
   const [pendingStart, setPendingStart] = useState<{mode: 'PRACTICE' | 'TEST', data: any} | null>(null);
+
+  // New: Chapter Data for Notes
+  const [chapterData, setChapterData] = useState<any>(null);
+  const [activeNote, setActiveNote] = useState<any>(null);
+
+  useEffect(() => {
+      const fetchChapterContent = async () => {
+          try {
+              const streamKey = (classLevel === '11' || classLevel === '12') && stream ? `-${stream}` : '';
+              const key = `nst_content_${board}_${classLevel}${streamKey}_${subject.name}_${chapter.id}`;
+              let data = await getChapterData(key);
+              if (!data) {
+                  const stored = localStorage.getItem(key);
+                  if (stored) data = JSON.parse(stored);
+              }
+              setChapterData(data || {});
+          } catch (e) {
+              console.error("Error fetching notes for MCQ view", e);
+          }
+      };
+      fetchChapterContent();
+  }, [chapter.id, board, classLevel, stream, subject.name]);
 
   const handleStart = async (mode: 'PRACTICE' | 'TEST') => {
       // 1. Fetch Data First (To avoid charging for empty chapters)
@@ -725,7 +747,79 @@ export const McqView: React.FC<Props> = ({
            </button>
            
            {loading && <div className="text-center py-4 text-slate-500 font-bold animate-pulse">Loading Questions...</div>}
+
+           {/* REVISION NOTES SECTION (NEW) */}
+           {chapterData?.topicNotes && chapterData.topicNotes.length > 0 && (
+               <div className="pt-4 border-t border-slate-100">
+                   <h4 className="font-bold text-slate-800 mb-3 flex items-center gap-2 px-2">
+                       <FileText size={18} className="text-orange-600"/>
+                       {topicFilter ? `Notes for "${topicFilter}"` : 'Revision Notes'}
+                   </h4>
+                   <div className="space-y-3">
+                       {chapterData.topicNotes
+                           .filter((n: any) => {
+                               if (!topicFilter || chapterData.showAll) return true;
+                               const normTopic = (n.topic || '').toLowerCase();
+                               const normFilter = topicFilter.toLowerCase();
+                               return normTopic.includes(normFilter) || normFilter.includes(normTopic);
+                           })
+                           .map((note: any, idx: number) => (
+                           <button
+                               key={idx}
+                               onClick={() => setActiveNote(note)}
+                               className="w-full text-left p-4 rounded-2xl bg-orange-50 border border-orange-100 hover:border-orange-300 transition-all flex items-center justify-between group shadow-sm"
+                           >
+                               <div>
+                                   <h5 className="font-bold text-slate-800 text-sm line-clamp-1">{note.title}</h5>
+                                   <div className="flex gap-2 mt-1">
+                                       <span className="text-[10px] text-orange-600 font-bold uppercase bg-white px-2 py-0.5 rounded border border-orange-100">{note.topic}</span>
+                                       {note.isPremium && <span className="text-[10px] text-purple-600 font-bold uppercase flex items-center gap-1"><Lock size={10} /> Premium</span>}
+                                   </div>
+                               </div>
+                               <div className="bg-white p-2 rounded-full text-orange-500 shadow-sm group-hover:bg-orange-500 group-hover:text-white transition-colors">
+                                   <ArrowLeft size={16} className="rotate-180" />
+                               </div>
+                           </button>
+                       ))}
+                       {chapterData.topicNotes.filter((n: any) => {
+                               if (!topicFilter || chapterData.showAll) return true;
+                               const normTopic = (n.topic || '').toLowerCase();
+                               const normFilter = topicFilter.toLowerCase();
+                               return normTopic.includes(normFilter) || normFilter.includes(normTopic);
+                       }).length === 0 && topicFilter && !chapterData.showAll && (
+                           <div className="p-4 bg-slate-50 rounded-xl text-center text-slate-400 text-xs italic">
+                               No specific notes found for "{topicFilter}". <br/>
+                               <button onClick={() => setChapterData({...chapterData, showAll: true})} className="text-blue-500 font-bold underline mt-1">View All Notes</button>
+                           </div>
+                       )}
+                   </div>
+               </div>
+           )}
        </div>
+
+       {/* NOTE MODAL */}
+       {activeNote && (
+           <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-slate-900/80 backdrop-blur-sm animate-in fade-in">
+               <div className="bg-white w-full max-w-2xl max-h-[80vh] rounded-3xl overflow-hidden flex flex-col shadow-2xl relative">
+                   <div className="p-4 border-b flex justify-between items-center bg-slate-50">
+                       <h3 className="font-black text-slate-800 line-clamp-1">{activeNote.title}</h3>
+                       <button onClick={() => setActiveNote(null)} className="p-2 hover:bg-slate-200 rounded-full text-slate-500"><X size={20} /></button>
+                   </div>
+                   <div className="flex-1 overflow-y-auto p-6 prose prose-sm max-w-none">
+                       {activeNote.content ? (
+                           <div dangerouslySetInnerHTML={{ __html: activeNote.content }} />
+                       ) : (
+                           <p className="text-center text-slate-400 italic">No content available for preview.</p>
+                       )}
+                   </div>
+                   {activeNote.isPremium && !user.isPremium && (
+                       <div className="p-4 bg-purple-50 text-center text-xs font-bold text-purple-700 border-t border-purple-100 flex justify-center gap-2 items-center">
+                           <Lock size={12} /> Premium Note Preview
+                       </div>
+                   )}
+               </div>
+           </div>
+       )}
 
        {/* HISTORY & DASHBOARD */}
        <div className="px-6 pb-6 space-y-4">

@@ -304,7 +304,6 @@ export interface LoginBonusConfig {
     basicBonus: number;
     ultraBonus: number;
     strictStreak: boolean; // If true, breaking streak forfeits next day bonus or resets heavily
-  main
 }
 
 export interface SystemSettings {
