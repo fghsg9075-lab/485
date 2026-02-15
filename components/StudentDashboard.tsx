@@ -921,28 +921,7 @@ export const StudentDashboard: React.FC<Props> = ({ user, dailyStudySeconds, onS
           if (type === 'VIDEO') {
             return <VideoPlaylistView chapter={selectedChapter} subject={selectedSubject} user={user} board={user.board || 'CBSE'} classLevel={user.classLevel || '10'} stream={user.stream || null} onBack={handlePlayerBack} onUpdateUser={handleUserUpdate} settings={settings} initialSyllabusMode={syllabusMode} />;
           } else if (type === 'PDF') {
-            return <PdfView
-                chapter={selectedChapter}
-                subject={selectedSubject}
-                user={user}
-                board={user.board || 'CBSE'}
-                classLevel={user.classLevel || '10'}
-                stream={user.stream || null}
-                onBack={handlePlayerBack}
-                onUpdateUser={handleUserUpdate}
-                settings={settings}
-                initialSyllabusMode={syllabusMode}
-                directResource={(selectedChapter as any).directResource}
-                topicFilter={topicFilter}
-                onSwitchToMcq={(topic) => {
-                    // Switch to MCQ Tab but keep same context
-                    onTabChange('MCQ');
-                    if(topic) setTopicFilter(topic);
-                    // Ensure state remains consistent for render
-                    setContentViewStep('PLAYER');
-                    setFullScreen(true);
-                }}
-            />;
+            return <PdfView chapter={selectedChapter} subject={selectedSubject} user={user} board={user.board || 'CBSE'} classLevel={user.classLevel || '10'} stream={user.stream || null} onBack={handlePlayerBack} onUpdateUser={handleUserUpdate} settings={settings} initialSyllabusMode={syllabusMode} directResource={(selectedChapter as any).directResource} topicFilter={topicFilter} />;
           } else if (type === 'AUDIO') {
             return <AudioPlaylistView chapter={selectedChapter} subject={selectedSubject} user={user} board={user.board || 'CBSE'} classLevel={user.classLevel || '10'} stream={user.stream || null} onBack={handlePlayerBack} onUpdateUser={handleUserUpdate} settings={settings} onPlayAudio={setCurrentAudioTrack} initialSyllabusMode={syllabusMode} />;
           } else {

@@ -304,6 +304,7 @@ export interface LoginBonusConfig {
     basicBonus: number;
     ultraBonus: number;
     strictStreak: boolean; // If true, breaking streak forfeits next day bonus or resets heavily
+  main
 }
 
 export interface SystemSettings {
@@ -318,7 +319,6 @@ export interface SystemSettings {
   mcqAnalysisCost?: number;
   appShortName?: string; // e.g. "IIC"
   officialAppUrl?: string; // NEW: Play Store Link
-  exploreBanners?: BannerItem[]; // NEW: Explore Page Banners
   bannerConfig?: {
       top: BannerSettings;
       bottom: BannerSettings;

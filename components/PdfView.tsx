@@ -27,11 +27,10 @@ interface Props {
   initialSyllabusMode?: 'SCHOOL' | 'COMPETITION';
   directResource?: { url: string, access: string }; // NEW: For Universal Notes
   topicFilter?: string; // NEW: Filter view by topic
-  onSwitchToMcq?: (topic?: string) => void; // NEW: Switch to MCQ Flow
 }
 
 export const PdfView: React.FC<Props> = ({ 
-  chapter, subject, user, board, classLevel, stream, onBack, onUpdateUser, settings, initialSyllabusMode, directResource, topicFilter, onSwitchToMcq
+  chapter, subject, user, board, classLevel, stream, onBack, onUpdateUser, settings, initialSyllabusMode, directResource, topicFilter
 }) => {
   const [contentData, setContentData] = useState<any>({});
   const [loading, setLoading] = useState(true);
@@ -164,7 +163,10 @@ export const PdfView: React.FC<Props> = ({
             const stored = localStorage.getItem(key);
             if (stored) data = JSON.parse(stored);
         }
+ revision-hub-revamp-2190173471545668082
 
+
+ main
         setContentData(data || {});
       } catch (error) {
         console.error("Error loading PDF data:", error);
@@ -175,6 +177,45 @@ export const PdfView: React.FC<Props> = ({
 
     fetchData();
   }, [chapter.id, board, classLevel, stream, subject.name, directResource]);
+
+ revision-hub-revamp-2190173471545668082
+  // AUTO-OPEN TOPIC NOTES LOGIC (Refactored to useEffect)
+  useEffect(() => {
+    if (!contentData.topicNotes || !topicFilter || activePdf) return;
+
+    // Filter Logic Replicated
+    const notes = contentData.topicNotes;
+    const grouped: Record<string, any[]> = {};
+    notes.forEach((n: any) => {
+        const t = n.topic || 'General';
+        if (!grouped[t]) grouped[t] = [];
+        grouped[t].push(n);
+    });
+
+    const normalize = (s: string) => s.trim().toLowerCase();
+    const target = normalize(topicFilter);
+    let topics = Object.keys(grouped);
+
+    // Check if topics match filter
+    topics = topics.filter(t => normalize(t) === target || normalize(t).includes(target) || target.includes(normalize(t)));
+
+    if (topics.length === 1) {
+        const notesInTopic = grouped[topics[0]];
+        if (notesInTopic.length > 0) {
+            const noteToOpen = notesInTopic[0];
+
+            // Premium Check
+            if (noteToOpen.isPremium) {
+                const isSubscribed = user.isPremium && user.subscriptionEndDate && new Date(user.subscriptionEndDate) > new Date();
+                if (isSubscribed || user.role === 'ADMIN') {
+                     if (noteToOpen.content) setActivePdf(noteToOpen.content);
+                }
+            } else {
+                 if (noteToOpen.content) setActivePdf(noteToOpen.content);
+            }
+        }
+    }
+  }, [contentData, topicFilter, activePdf, user]);
 
   // --- FILTERED DATA LOGIC (MOVED OUT OF RENDER) ---
   const filteredTopicData = useMemo(() => {
@@ -259,6 +300,7 @@ export const PdfView: React.FC<Props> = ({
           }
       }
   }, [filteredTopicData, loading, user]); // Removed activePdf dependency to avoid loop, checking it inside effect callback or using callback setter
+ main
 
   const handlePdfClick = (type: 'FREE' | 'PREMIUM' | 'ULTRA') => {
       let link = '';
@@ -656,12 +698,12 @@ export const PdfView: React.FC<Props> = ({
 
                                return isHtml ? (
                                    <div 
-                                       className="max-w-3xl mx-auto pb-24"
+                                       className="max-w-3xl mx-auto"
                                        dangerouslySetInnerHTML={{ __html: contentToRender }} 
                                    />
                                ) : (
                                    /* REACT MARKDOWN RENDERER */
-                                   <div className="max-w-3xl mx-auto pb-24 prose prose-slate prose-headings:text-slate-800 prose-p:text-slate-700 prose-strong:text-slate-900 prose-li:text-slate-700">
+                                   <div className="max-w-3xl mx-auto prose prose-slate prose-headings:text-slate-800 prose-p:text-slate-700 prose-strong:text-slate-900 prose-li:text-slate-700">
                                        <ReactMarkdown
                                            remarkPlugins={[remarkMath]}
                                            rehypePlugins={[rehypeKatex]}
@@ -671,20 +713,6 @@ export const PdfView: React.FC<Props> = ({
                                    </div>
                                );
                            })()}
-
-                           {/* START MCQ BUTTON (If switched from Revision Hub) */}
-                           {onSwitchToMcq && (
-                               <div className="max-w-3xl mx-auto mt-8 p-6 bg-purple-50 rounded-2xl border-2 border-purple-100 text-center">
-                                   <h4 className="text-lg font-black text-purple-900 mb-2">Done Reading?</h4>
-                                   <p className="text-sm text-purple-700 mb-4">Test your understanding of <b>{topicFilter || chapter.title}</b> now.</p>
-                                   <button
-                                       onClick={() => onSwitchToMcq(topicFilter)}
-                                       className="bg-purple-600 text-white px-8 py-3 rounded-xl font-bold shadow-lg hover:bg-purple-700 active:scale-95 transition-all flex items-center justify-center gap-2 mx-auto"
-                                   >
-                                       <CheckSquare size={20} /> Practice MCQs
-                                   </button>
-                               </div>
-                           )}
                        </div>
                    )}
                </div>
@@ -879,6 +907,35 @@ export const PdfView: React.FC<Props> = ({
                        );
                    })()}
 
+ revision-hub-revamp-2190173471545668082
+                   {/* TOPIC NOTES SECTION */}
+                   {contentData.topicNotes && contentData.topicNotes.length > 0 && !contentData.isTopicNotesHidden && !settings?.areTopicNotesHiddenGlobally && (() => {
+                       const notes = contentData.topicNotes;
+                       // Group by Topic
+                       const grouped: Record<string, any[]> = {};
+                       notes.forEach((n: any) => {
+                           const t = n.topic || 'General';
+                           if (!grouped[t]) grouped[t] = [];
+                           grouped[t].push(n);
+                       });
+
+                       let topics = Object.keys(grouped);
+
+                       // Apply Filter
+                       if (topicFilter) {
+                           // Case-insensitive, trimmed comparison
+                           const normalize = (s: string) => s.trim().toLowerCase();
+                           const target = normalize(topicFilter);
+
+                           topics = topics.filter(t => normalize(t) === target || normalize(t).includes(target) || target.includes(normalize(t)));
+
+                           if (topics.length === 0) return (
+                               <div className="mt-6 p-4 text-center text-slate-400 text-sm font-bold bg-slate-100 rounded-xl">
+                                   No notes found for topic: {topicFilter}
+                               </div>
+                           );
+                       }
+
                    {/* TOPIC NOTES SECTION (REFACTORED) */}
                    {filteredTopicData && (
                        <div className="space-y-4 mt-6">
@@ -891,6 +948,7 @@ export const PdfView: React.FC<Props> = ({
                                    </div>
                                </div>
                            )}
+ main
 
                            <h4 className="font-bold text-slate-800 flex items-center gap-2 px-1">
                                <FileText size={18} className="text-orange-600" /> {filteredTopicData.isExactMatch && topicFilter ? `${topicFilter} Notes` : 'Topic Notes'}
