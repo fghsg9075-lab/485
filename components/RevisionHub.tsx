@@ -474,10 +474,23 @@ export const RevisionHub: React.FC<Props> = ({ user, onTabChange, settings, onNa
                                             // OMR BAR STYLE LOGIC
                                             let barColor = 'bg-blue-500';
                                             let barWidth = '60%';
+                                            let nextInterval = '3 Days';
 
-                                            if (topic.status === 'WEAK') { barColor = 'bg-red-500'; barWidth = '30%'; }
-                                            else if (topic.status === 'STRONG') { barColor = 'bg-green-500'; barWidth = '90%'; }
-                                            else { barColor = 'bg-orange-500'; barWidth = '60%'; }
+                                            if (topic.status === 'WEAK') {
+                                                barColor = 'bg-red-500';
+                                                barWidth = '30%';
+                                                nextInterval = '2 Days';
+                                            } else if (topic.status === 'STRONG') {
+                                                barColor = 'bg-green-500';
+                                                barWidth = '90%';
+                                                nextInterval = '7 Days';
+                                                // Check for 30 day mastery (rough heuristic from score if streak data unavailable in view)
+                                                if (topic.score >= 90) nextInterval = '30 Days';
+                                            } else {
+                                                barColor = 'bg-orange-500';
+                                                barWidth = '60%';
+                                                nextInterval = '3 Days';
+                                            }
 
                                             return (
                                                 <div key={idx} className="p-4 hover:bg-slate-50 transition-colors">
@@ -496,6 +509,9 @@ export const RevisionHub: React.FC<Props> = ({ user, onTabChange, settings, onNa
                                                                 </div>
                                                                 <div className="h-1.5 w-full bg-slate-100 rounded-full overflow-hidden border border-slate-100">
                                                                     <div className={`h-full ${barColor} transition-all duration-1000`} style={{ width: barWidth }}></div>
+                                                                </div>
+                                                                <div className="mt-1 text-[8px] text-slate-400 font-medium flex items-center gap-1">
+                                                                    <TrendingUp size={8} /> Next: {nextInterval}
                                                                 </div>
                                                             </div>
                                                         </div>
