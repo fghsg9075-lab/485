@@ -266,12 +266,12 @@ export interface BannerSettings {
     textColor?: string;
 }
 
-feature-dashboard-redesign-cleanup-13635731507476622996
 export interface BannerItem {
     id: string;
     imageUrl: string;
     actionUrl?: string; // Optional link
     isActive: boolean;
+}
 
 export interface ExploreBanner {
     id: string;
@@ -304,7 +304,6 @@ export interface LoginBonusConfig {
     basicBonus: number;
     ultraBonus: number;
     strictStreak: boolean; // If true, breaking streak forfeits next day bonus or resets heavily
-  main
 }
 
 export interface SystemSettings {

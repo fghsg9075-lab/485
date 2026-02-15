@@ -822,20 +822,20 @@ export const PdfView: React.FC<Props> = ({
                            const normalize = (s: string) => s.trim().toLowerCase();
                            const target = normalize(topicFilter);
 
-                           // Revision Filter: Prioritize HTML, Exclude PDF if filtered
+                           // Revision Filter: Sort HTML first, but KEEP PDF
                            topics = topics.filter(t => {
                                const match = normalize(t) === target || normalize(t).includes(target) || target.includes(normalize(t));
                                if (!match) return false;
 
-                               // Check if topic contains HTML notes
-                               const hasHtml = grouped[t].some(n => n.type === 'HTML' || n.content);
-                               // If strict revision mode (topicFilter present), user wants to READ, not download PDF
-                               if (hasHtml) {
-                                   // Filter the group content to ONLY HTML
-                                   grouped[t] = grouped[t].filter(n => n.type === 'HTML' || n.content);
-                                   return true;
-                               }
-                               // If only PDF exists, we keep it, but priority is HTML
+                               // Sort: HTML content first, then PDF
+                               grouped[t].sort((a, b) => {
+                                   const isAHtml = a.type === 'HTML' || a.content;
+                                   const isBHtml = b.type === 'HTML' || b.content;
+                                   if (isAHtml && !isBHtml) return -1;
+                                   if (!isAHtml && isBHtml) return 1;
+                                   return 0;
+                               });
+
                                return true;
                            });
 
