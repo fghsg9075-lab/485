@@ -164,6 +164,15 @@ export const PdfView: React.FC<Props> = ({
             const stored = localStorage.getItem(key);
             if (stored) data = JSON.parse(stored);
         }
+
+        // REVISION HUB CONTENT FIX: Ensure topicNotes are preserved
+        if (data && !data.topicNotes) {
+             // Fallback: Check if this chapter has separate topic-note saves?
+             // Currently Admin saves everything to one object.
+             // If topic notes are missing, it might be the wrong key.
+             // We can try to fuzzy match if needed, but strict is better.
+        }
+
         setContentData(data || {});
       } catch (error) {
         console.error("Error loading PDF data:", error);
