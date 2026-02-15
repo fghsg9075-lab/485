@@ -759,9 +759,10 @@ export const McqView: React.FC<Props> = ({
                        {chapterData.topicNotes
                            .filter((n: any) => {
                                if (!topicFilter || chapterData.showAll) return true;
-                               const normTopic = (n.topic || '').toLowerCase();
-                               const normFilter = topicFilter.toLowerCase();
-                               return normTopic.includes(normFilter) || normFilter.includes(normTopic);
+                               const normalize = (s: string) => s.trim().toLowerCase().replace(/[^a-z0-9]/g, '');
+                               const normTopic = normalize(n.topic || 'General');
+                               const normFilter = normalize(topicFilter);
+                               return normTopic === normFilter || normTopic.includes(normFilter) || normFilter.includes(normTopic);
                            })
                            .map((note: any, idx: number) => (
                            <button
@@ -783,9 +784,10 @@ export const McqView: React.FC<Props> = ({
                        ))}
                        {chapterData.topicNotes.filter((n: any) => {
                                if (!topicFilter || chapterData.showAll) return true;
-                               const normTopic = (n.topic || '').toLowerCase();
-                               const normFilter = topicFilter.toLowerCase();
-                               return normTopic.includes(normFilter) || normFilter.includes(normTopic);
+                               const normalize = (s: string) => s.trim().toLowerCase().replace(/[^a-z0-9]/g, '');
+                               const normTopic = normalize(n.topic || 'General');
+                               const normFilter = normalize(topicFilter);
+                               return normTopic === normFilter || normTopic.includes(normFilter) || normFilter.includes(normTopic);
                        }).length === 0 && topicFilter && !chapterData.showAll && (
                            <div className="p-4 bg-slate-50 rounded-xl text-center text-slate-400 text-xs italic">
                                No specific notes found for "{topicFilter}". <br/>
