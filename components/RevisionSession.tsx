@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { User, SystemSettings, MCQItem } from '../types';
 import { X, BookOpen, Zap, CheckCircle, AlertCircle, ChevronRight, Check, RotateCcw, Loader2 } from 'lucide-react';
-import { getChapterData } from '../firebase';
+import { getChapterData, saveUserToLive } from '../firebase';
 import { storage } from '../utils/storage';
 
 interface Props {
@@ -12,9 +12,10 @@ interface Props {
     chapterTitle: string;
     subjectName?: string;
     onClose: () => void;
+    onUpdateUser: (u: User) => void;
 }
 
-export const RevisionSession: React.FC<Props> = ({ user, settings, chapterId, subTopic, chapterTitle, subjectName, onClose }) => {
+export const RevisionSession: React.FC<Props> = ({ user, settings, chapterId, subTopic, chapterTitle, subjectName, onClose, onUpdateUser }) => {
     const [activeTab, setActiveTab] = useState<'NOTES' | 'MCQ'>('NOTES');
     const [loading, setLoading] = useState(true);
     const [notesContent, setNotesContent] = useState<string | null>(null);
@@ -25,6 +26,7 @@ export const RevisionSession: React.FC<Props> = ({ user, settings, chapterId, su
     const [selectedOption, setSelectedOption] = useState<number | null>(null);
     const [showExplanation, setShowExplanation] = useState(false);
     const [isCorrect, setIsCorrect] = useState<boolean | null>(null);
+    const [score, setScore] = useState(0);
 
     useEffect(() => {
         const loadContent = async () => {
@@ -95,6 +97,8 @@ export const RevisionSession: React.FC<Props> = ({ user, settings, chapterId, su
         const isRight = idx === correct;
         setIsCorrect(isRight);
         setShowExplanation(true);
+
+        if (isRight) setScore(prev => prev + 1);
     };
 
     const nextQuestion = () => {
@@ -104,8 +108,53 @@ export const RevisionSession: React.FC<Props> = ({ user, settings, chapterId, su
             setShowExplanation(false);
             setIsCorrect(null);
         } else {
-            onClose();
+            finishSession();
         }
+    };
+
+    const finishSession = () => {
+        // Calculate Logic
+        const total = mcqData.length;
+        const finalScore = score; // Already updated
+        const percentage = total > 0 ? (finalScore / total) * 100 : 0;
+
+        // Status Logic
+        let status = 'AVERAGE';
+        if (percentage < 50) status = 'WEAK';
+        else if (percentage >= 80) status = 'STRONG';
+
+        // Construct Report for Spaced Repetition Logic in RevisionHub
+        const ultraReport = {
+            topics: [
+                {
+                    name: subTopic,
+                    status: status
+                }
+            ]
+        };
+
+        // Create History Entry
+        const newEntry = {
+            testId: `rev-${Date.now()}`,
+            chapterId: chapterId,
+            chapterTitle: chapterTitle,
+            subjectName: subjectName || 'Revision',
+            score: finalScore,
+            totalQuestions: total,
+            date: new Date().toISOString(),
+            type: 'REVISION_MCQ',
+            ultraAnalysisReport: JSON.stringify(ultraReport)
+        };
+
+        // Update User
+        const updatedUser = {
+            ...user,
+            mcqHistory: [...(user.mcqHistory || []), newEntry]
+        };
+
+        onUpdateUser(updatedUser);
+        saveUserToLive(updatedUser);
+        onClose();
     };
 
     return (
@@ -253,6 +302,12 @@ export const RevisionSession: React.FC<Props> = ({ user, settings, chapterId, su
                                         </div>
                                         <p className="font-bold text-slate-600">No quick practice questions found.</p>
                                         <p className="text-xs mt-1">Try taking the full chapter test.</p>
+                                        <button
+                                            onClick={finishSession}
+                                            className="mt-4 px-6 py-2 bg-slate-100 text-slate-600 font-bold rounded-xl"
+                                        >
+                                            Go Back
+                                        </button>
                                     </div>
                                 )}
                             </div>

@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { User, StudentTab, SystemSettings } from '../types';
-import { BrainCircuit, Clock, CheckCircle, TrendingUp, AlertTriangle, ArrowRight, Bot, Sparkles, BookOpen, AlertCircle, X, FileText, CheckSquare, Calendar, Zap, AlertCircle as AlertIcon, ChevronDown, ChevronUp, Loader2, Lock, Unlock, Layers } from 'lucide-react';
+import { BrainCircuit, Clock, CheckCircle, TrendingUp, AlertTriangle, ArrowRight, Bot, Sparkles, BookOpen, AlertCircle, X, FileText, CheckSquare, Calendar, Zap, AlertCircle as AlertIcon, ChevronDown, ChevronUp, Loader2, Lock, Unlock } from 'lucide-react';
 import { BannerCarousel } from './BannerCarousel';
 import { generateCustomNotes } from '../services/groq';
 import { saveAiInteraction, getChapterData } from '../firebase';
@@ -12,6 +12,7 @@ interface Props {
     onTabChange: (tab: StudentTab) => void;
     settings?: SystemSettings;
     onNavigateContent?: (type: 'PDF' | 'MCQ', chapterId: string, topicName?: string, subjectName?: string) => void;
+    onUpdateUser?: (user: User) => void;
 }
 
 type TopicStatus = 'WEAK' | 'AVERAGE' | 'STRONG';
@@ -29,18 +30,23 @@ interface TopicItem {
     isSubTopic: boolean;
 }
 
-export const RevisionHub: React.FC<Props> = ({ user, onTabChange, settings, onNavigateContent }) => {
+export const RevisionHub: React.FC<Props> = ({ user, onTabChange, settings, onNavigateContent, onUpdateUser }) => {
     const [topics, setTopics] = useState<TopicItem[]>([]);
     const [activeFilter, setActiveFilter] = useState<'TODAY' | 'WEAK' | 'AVERAGE' | 'STRONG'>('TODAY');
-
-    // Revision Session State
-    const [currentSession, setCurrentSession] = useState<{chapterId: string, subTopic: string, chapterTitle: string, subjectName?: string} | null>(null);
 
     // AI Modal State
     const [showAiModal, setShowAiModal] = useState(false);
     const [aiTopic, setAiTopic] = useState('');
     const [aiGenerating, setAiGenerating] = useState(false);
     const [aiResult, setAiResult] = useState<string | null>(null);
+
+    // Session State
+    const [activeSession, setActiveSession] = useState<{
+        chapterId: string;
+        subTopic: string;
+        chapterTitle: string;
+        subjectName?: string;
+    } | null>(null);
 
     // Custom Alert State
     const [alertConfig, setAlertConfig] = useState<{isOpen: boolean, type: 'SUCCESS'|'ERROR'|'INFO', title?: string, message: string}>({isOpen: false, type: 'INFO', message: ''});
@@ -76,36 +82,25 @@ export const RevisionHub: React.FC<Props> = ({ user, onTabChange, settings, onNa
                             let streak = streakTracker.get(uniqueId) || 0;
 
                             // Extract Status and Logic
-                            // Rules:
-                            // < 50% -> 2 days (Weak)
-                            // 50-80% -> 3 days (Average)
-                            // > 80% -> 7 days (Strong)
-                            // 2x > 80% -> 30 days (Super Strong)
-
                             let status: TopicStatus = 'AVERAGE';
-                            let daysToAdd = 3; // Default Average (3 days per user request)
-                            let score = t.score || 0; // Assuming parsed topic has score
+                            let daysToAdd = 3;
 
-                            // Re-infer score bucket if exact score missing
-                            if (t.status === 'WEAK') score = 40;
-                            else if (t.status === 'STRONG') score = 90;
-                            else if (t.status === 'AVERAGE') score = 65;
-
-                            if (score < 50) {
+                            if (t.status === 'WEAK') {
                                 status = 'WEAK';
-                                daysToAdd = 2;
+                                daysToAdd = 2; // < 50% -> 2 days
                                 streak = 0; // Reset streak
-                            } else if (score >= 80) {
+                            } else if (t.status === 'STRONG') {
                                 status = 'STRONG';
                                 streak += 1;
+
                                 if (streak >= 2) {
-                                    daysToAdd = 30;
+                                    daysToAdd = 30; // 2x > 80% -> 30 days
                                 } else {
-                                    daysToAdd = 7;
+                                    daysToAdd = 7; // > 80% -> 7 days
                                 }
                             } else {
                                 status = 'AVERAGE';
-                                daysToAdd = 3; // Changed from 5 to 3
+                                daysToAdd = 3; // 50-80% -> 3 days
                                 streak = 0; // Reset streak
                             }
 
@@ -119,7 +114,7 @@ export const RevisionHub: React.FC<Props> = ({ user, onTabChange, settings, onNa
                                 chapterId: result.chapterId,
                                 chapterName: chapterTitle,
                                 name: t.name, // Sub-topic Name
-                                score: score,
+                                score: result.score, // Chapter Score
                                 lastAttempt: result.date,
                                 status,
                                 nextRevision: nextRev.toISOString(),
@@ -140,7 +135,7 @@ export const RevisionHub: React.FC<Props> = ({ user, onTabChange, settings, onNa
                 let streak = streakTracker.get(uniqueId) || 0;
 
                 let status: TopicStatus = 'AVERAGE';
-                let daysToAdd = 3; // Default Average
+                let daysToAdd = 3;
 
                 if (percentage < 50) {
                     status = 'WEAK';
@@ -153,7 +148,7 @@ export const RevisionHub: React.FC<Props> = ({ user, onTabChange, settings, onNa
                     else daysToAdd = 7;
                 } else {
                     status = 'AVERAGE';
-                    daysToAdd = 3; // Changed from 5 to 3
+                    daysToAdd = 3;
                     streak = 0;
                 }
 
@@ -180,6 +175,18 @@ export const RevisionHub: React.FC<Props> = ({ user, onTabChange, settings, onNa
 
         setTopics(Array.from(topicMap.values()).sort((a, b) => new Date(a.nextRevision).getTime() - new Date(b.nextRevision).getTime()));
     }, [user.mcqHistory]);
+
+    const getStatusColor = (status: TopicStatus) => {
+        if (status === 'WEAK') return 'text-red-600 bg-red-50 border-red-200';
+        if (status === 'STRONG') return 'text-green-600 bg-green-50 border-green-200';
+        return 'text-orange-600 bg-orange-50 border-orange-200';
+    };
+
+    const getStatusIcon = (status: TopicStatus) => {
+        if (status === 'WEAK') return <AlertTriangle size={14} />;
+        if (status === 'STRONG') return <CheckCircle size={14} />;
+        return <TrendingUp size={14} />;
+    };
 
     const handleAiNotesGeneration = async () => {
         if (!aiTopic.trim()) {
@@ -305,6 +312,15 @@ export const RevisionHub: React.FC<Props> = ({ user, onTabChange, settings, onNa
         });
     }
 
+    const startSession = (topic: TopicItem) => {
+        setActiveSession({
+            chapterId: topic.chapterId,
+            subTopic: topic.name,
+            chapterTitle: topic.chapterName,
+            subjectName: topic.subjectName
+        });
+    };
+
     return (
         <div className="space-y-6 pb-24 p-4 animate-in fade-in">
             <div className="flex items-center justify-between mb-2">
@@ -392,26 +408,21 @@ export const RevisionHub: React.FC<Props> = ({ user, onTabChange, settings, onNa
                 })}
             </div>
 
-            {/* TOPIC LIST (GROUPED BY CHAPTER) */}
+            {/* TOPIC LIST */}
             <div>
                 <h3 className="font-black text-slate-800 text-lg mb-4 flex items-center gap-2">
                     {activeFilter === 'TODAY' ? '🔥 Today\'s Tasks' :
-                     activeFilter === 'WEAK' ? '⚠️ Upcoming Weak Areas' :
-                     activeFilter === 'AVERAGE' ? '📈 Upcoming Improvements' : '💪 Upcoming Mastered'}
+                     activeFilter === 'WEAK' ? '⚠️ Focus Areas' :
+                     activeFilter === 'AVERAGE' ? '📈 Improvements' : '💪 Mastered Topics'}
                 </h3>
 
                 {(() => {
                     let displayedTopics = topics;
-                    const now = new Date();
-                    const endOfToday = new Date();
-                    endOfToday.setHours(23, 59, 59, 999);
-
                     if (activeFilter === 'TODAY') {
-                        // TODAY: Anything due today or overdue
-                        displayedTopics = topics.filter(t => new Date(t.nextRevision) <= endOfToday);
+                        const now = new Date();
+                        displayedTopics = topics.filter(t => new Date(t.nextRevision) <= now || t.status === 'WEAK');
                     } else {
-                        // WEAK/AVG/STRONG: Only Future Tasks (Exclude Today)
-                        displayedTopics = topics.filter(t => t.status === activeFilter && new Date(t.nextRevision) > endOfToday);
+                        displayedTopics = topics.filter(t => t.status === activeFilter);
                     }
 
                     if (displayedTopics.length === 0) {
@@ -420,113 +431,130 @@ export const RevisionHub: React.FC<Props> = ({ user, onTabChange, settings, onNa
                                 <BookOpen className="mx-auto text-slate-300 mb-2" size={40} />
                                 <p className="text-slate-400 font-bold text-sm">No topics found in this category.</p>
                                 <p className="text-xs text-slate-400 mt-1">Keep studying to populate your plan!</p>
+
+                                {activeFilter === 'TODAY' && (
+                                    <button
+                                        onClick={() => onTabChange('COURSES')}
+                                        className="mt-4 bg-indigo-600 text-white px-6 py-2 rounded-xl text-sm font-bold shadow-lg hover:scale-105 transition-transform"
+                                    >
+                                        Start Learning
+                                    </button>
+                                )}
                             </div>
                         );
                     }
 
                     // GROUP BY CHAPTER
-                    const grouped: Record<string, TopicItem[]> = {};
+                    const groupedTopics: Record<string, TopicItem[]> = {};
                     displayedTopics.forEach(t => {
-                        const key = t.chapterName;
-                        if (!grouped[key]) grouped[key] = [];
-                        grouped[key].push(t);
-                    });
-
-                    // Sort Groups by Priority (Earliest Due Date first)
-                    const sortedGroupKeys = Object.keys(grouped).sort((a, b) => {
-                        const minDateA = Math.min(...grouped[a].map(t => new Date(t.nextRevision).getTime()));
-                        const minDateB = Math.min(...grouped[b].map(t => new Date(t.nextRevision).getTime()));
-                        return minDateA - minDateB;
+                        const key = t.chapterName || 'General';
+                        if (!groupedTopics[key]) groupedTopics[key] = [];
+                        groupedTopics[key].push(t);
                     });
 
                     return (
                         <div className="space-y-6">
-                            {sortedGroupKeys.map((chapterName, idx) => {
-                                const groupTopics = grouped[chapterName];
-                                const subTopicsCount = groupTopics.length;
-
-                                return (
-                                    <div key={idx} className="bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden animate-in slide-in-from-bottom-2">
-                                        {/* CHAPTER HEADER */}
-                                        <div className="bg-slate-50 p-4 border-b border-slate-100 flex justify-between items-center">
-                                            <div className="flex items-center gap-3">
-                                                <div className="w-10 h-10 rounded-xl bg-white border border-slate-200 flex items-center justify-center text-slate-500 shadow-sm">
-                                                    <Layers size={20} />
-                                                </div>
-                                                <div>
-                                                    <h4 className="font-black text-slate-800 text-sm">{chapterName}</h4>
-                                                    <p className="text-[10px] text-slate-500 font-bold">{subTopicsCount} Sub-topics due</p>
-                                                </div>
-                                            </div>
-                                        </div>
-
-                                        {/* SUB TOPICS LIST */}
-                                        <div className="divide-y divide-slate-50">
-                                            {groupTopics.map((topic, tIdx) => {
-                                                const due = new Date(topic.nextRevision);
-                                                const diffTime = due.getTime() - now.getTime();
-                                                const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
-
-                                                let dueLabel = '';
-                                                let dueColor = 'text-slate-400';
-                                                const isDue = diffDays <= 0;
-
-                                                if (isDue) {
-                                                    dueLabel = 'Due Today';
-                                                    dueColor = 'text-red-600 font-black animate-pulse';
-                                                } else if (diffDays === 1) {
-                                                    dueLabel = 'Tomorrow';
-                                                    dueColor = 'text-orange-500 font-bold';
-                                                } else {
-                                                    dueLabel = `${diffDays} Days`;
-                                                    dueColor = 'text-blue-500 font-bold';
-                                                }
-
-                                                return (
-                                                    <div key={tIdx} className="p-4 hover:bg-slate-50 transition-colors flex items-center justify-between gap-4">
-                                                        <div className="flex-1">
-                                                            <div className="flex items-center gap-2 mb-1">
-                                                                <h5 className="font-bold text-slate-700 text-sm">{topic.name}</h5>
-                                                                <span className={`text-[9px] font-bold px-2 py-0.5 rounded-full uppercase ${topic.status === 'WEAK' ? 'bg-red-100 text-red-700' : topic.status === 'STRONG' ? 'bg-green-100 text-green-700' : 'bg-orange-100 text-orange-700'}`}>
-                                                                    {topic.status}
-                                                                </span>
-                                                            </div>
-                                                            <div className="flex items-center gap-3">
-                                                                <div className="flex items-center gap-1 text-[10px] text-slate-400">
-                                                                    <Clock size={10} />
-                                                                    <span className={isDue ? 'text-red-500 font-bold' : ''}>{dueLabel}</span>
-                                                                </div>
-                                                                <div className="flex items-center gap-1 text-[10px] text-slate-400">
-                                                                    <TrendingUp size={10} />
-                                                                    <span>Score: {Math.round(topic.score)}%</span>
-                                                                </div>
-                                                            </div>
-                                                        </div>
-
-                                                        {isDue ? (
-                                                            <button
-                                                                onClick={() => setCurrentSession({
-                                                                    chapterId: topic.chapterId,
-                                                                    subTopic: topic.name,
-                                                                    chapterTitle: topic.chapterName,
-                                                                    subjectName: topic.subjectName
-                                                                })}
-                                                                className="px-4 py-2 bg-indigo-600 text-white text-xs font-bold rounded-xl shadow-lg shadow-indigo-200 hover:bg-indigo-700 active:scale-95 transition-all flex items-center gap-2"
-                                                            >
-                                                                <Zap size={14} /> Revise
-                                                            </button>
-                                                        ) : (
-                                                            <div className="px-4 py-2 bg-slate-100 text-slate-400 text-[10px] font-bold rounded-xl flex items-center gap-2 border border-slate-200">
-                                                                <Lock size={12} /> Locked
-                                                            </div>
-                                                        )}
-                                                    </div>
-                                                );
-                                            })}
-                                        </div>
+                            {Object.entries(groupedTopics).map(([chapter, subTopics], grpIdx) => (
+                                <div key={grpIdx} className="bg-slate-50 rounded-2xl border border-slate-200 overflow-hidden">
+                                    <div className="bg-white px-4 py-3 border-b border-slate-200 flex items-center justify-between">
+                                        <h4 className="font-bold text-slate-800 text-sm flex items-center gap-2">
+                                            <div className="w-2 h-2 rounded-full bg-indigo-500"></div>
+                                            {chapter}
+                                        </h4>
+                                        <span className="text-[10px] font-bold text-slate-500 bg-slate-100 px-2 py-0.5 rounded-full">
+                                            {subTopics.length} Topics
+                                        </span>
                                     </div>
-                                );
-                            })}
+                                    <div className="p-3 space-y-3">
+                                        {subTopics.map((topic, idx) => {
+                                            const due = new Date(topic.nextRevision);
+                                            const now = new Date();
+                                            const diffTime = due.getTime() - now.getTime();
+                                            const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+
+                                            let dueLabel = '';
+                                            const isDue = diffDays <= 0;
+
+                                            if (isDue) {
+                                                dueLabel = 'Due Today';
+                                            } else if (diffDays === 1) {
+                                                dueLabel = 'Tomorrow';
+                                            } else {
+                                                dueLabel = `${diffDays} Days Left`;
+                                            }
+
+                                            // OMR BAR STYLE LOGIC
+                                            let barColor = 'bg-blue-500';
+                                            let barWidth = '60%';
+
+                                            if (topic.status === 'WEAK') { barColor = 'bg-red-500'; barWidth = '30%'; }
+                                            else if (topic.status === 'STRONG') { barColor = 'bg-green-500'; barWidth = '90%'; }
+                                            else { barColor = 'bg-orange-500'; barWidth = '60%'; }
+
+                                            return (
+                                                <div key={idx} className="bg-white p-3 rounded-xl border border-slate-200 shadow-sm hover:shadow-md transition-all">
+                                                    {/* HEADER: TITLE + DUE DATE */}
+                                                    <div className="flex justify-between items-start mb-2">
+                                                        <div className="flex-1 pr-2">
+                                                            <h4 className="font-bold text-slate-800 text-sm truncate">{topic.name}</h4>
+                                                        </div>
+                                                        <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full ${isDue ? 'bg-red-100 text-red-600 animate-pulse' : 'bg-slate-100 text-slate-500'}`}>
+                                                            {isDue ? 'TODAY' : dueLabel}
+                                                        </span>
+                                                    </div>
+
+                                                    {/* PROGRESS BAR (OMR Style) */}
+                                                    <div className="mb-3">
+                                                        <div className="flex justify-between items-end mb-1">
+                                                            <span className={`text-[10px] font-black uppercase ${topic.status === 'WEAK' ? 'text-red-500' : topic.status === 'STRONG' ? 'text-green-600' : 'text-orange-500'}`}>
+                                                                {topic.status}
+                                                            </span>
+                                                            <span className="text-[10px] text-slate-400 font-bold">
+                                                                {Math.round(topic.score)}%
+                                                            </span>
+                                                        </div>
+                                                        <div className="h-2 w-full bg-slate-100 rounded-full overflow-hidden">
+                                                            <div className={`h-full ${barColor} transition-all duration-1000`} style={{ width: barWidth }}></div>
+                                                        </div>
+                                                    </div>
+
+                                                    {/* ACTIONS (Only Active if Due, else "Locked" View) */}
+                                                    {isDue ? (
+                                                        <div className="grid grid-cols-2 gap-2">
+                                                            <button
+                                                                onClick={() => startSession(topic)}
+                                                                className="w-full bg-blue-600 text-white py-2 rounded-lg text-xs font-bold hover:bg-blue-700 shadow-lg shadow-blue-200 transition-all flex items-center justify-center gap-2 active:scale-95"
+                                                            >
+                                                                <FileText size={14} /> Read Notes
+                                                            </button>
+
+                                                            <button
+                                                                onClick={() => startSession(topic)}
+                                                                className="w-full bg-white text-slate-700 border border-slate-200 py-2 rounded-lg text-xs font-bold hover:bg-slate-50 transition-all flex items-center justify-center gap-2 active:scale-95"
+                                                            >
+                                                                <CheckSquare size={14} /> MCQ
+                                                            </button>
+                                                        </div>
+                                                    ) : (
+                                                        <div className="flex items-center justify-between bg-slate-50 p-2 rounded-lg border border-slate-100">
+                                                            <div className="flex items-center gap-2 text-slate-400">
+                                                                <Clock size={14} />
+                                                                <span className="text-[10px] font-bold">Locked until due date</span>
+                                                            </div>
+                                                            <button
+                                                                onClick={() => startSession(topic)}
+                                                                className="text-[10px] font-black text-blue-600 hover:underline flex items-center gap-1"
+                                                            >
+                                                                <Unlock size={10} /> Revise Early
+                                                            </button>
+                                                        </div>
+                                                    )}
+                                                </div>
+                                            );
+                                        })}
+                                    </div>
+                                </div>
+                            ))}
                         </div>
                     );
                 })()}
@@ -608,15 +636,16 @@ export const RevisionHub: React.FC<Props> = ({ user, onTabChange, settings, onNa
             )}
 
             {/* REVISION SESSION MODAL */}
-            {currentSession && (
+            {activeSession && (
                 <RevisionSession
                     user={user}
                     settings={settings}
-                    chapterId={currentSession.chapterId}
-                    subTopic={currentSession.subTopic}
-                    chapterTitle={currentSession.chapterTitle}
-                    subjectName={currentSession.subjectName}
-                    onClose={() => setCurrentSession(null)}
+                    chapterId={activeSession.chapterId}
+                    subTopic={activeSession.subTopic}
+                    chapterTitle={activeSession.chapterTitle}
+                    subjectName={activeSession.subjectName}
+                    onClose={() => setActiveSession(null)}
+                    onUpdateUser={onUpdateUser || (() => {})}
                 />
             )}
 

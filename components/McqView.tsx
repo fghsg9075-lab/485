@@ -4,7 +4,7 @@ import { Chapter, User, Subject, SystemSettings, MCQResult, PerformanceTag } fro
 import { CheckCircle, Lock, ArrowLeft, Crown, PlayCircle, HelpCircle, Trophy, Clock, BrainCircuit, FileText } from 'lucide-react';
 import { CustomAlert, CustomConfirm } from './CustomDialogs';
 import { getChapterData, saveUserToLive, saveUserHistory, savePublicActivity } from '../firebase';
-import { generateLocalAnalysis, generateStructuredAnalysis } from '../utils/analysisUtils';
+import { generateLocalAnalysis } from '../utils/analysisUtils';
 import { LessonView } from './LessonView'; 
 import { MarksheetCard } from './MarksheetCard';
 import { AiInterstitial } from './AiInterstitial';
@@ -265,9 +265,6 @@ export const McqView: React.FC<Props> = ({
           timeSpent: remappedTime[idx] || 0 // Store per-question time
       }));
 
-      // GENERATE STRUCTURED ANALYSIS (NEW)
-      const ultraAnalysisReport = generateStructuredAnalysis(submittedQuestions, remappedAnswers);
-
       // Build Wrong Questions List (Strictly Incorrect Attempts)
       const wrongQuestions = submittedQuestions
         .map((q, idx) => {
@@ -312,8 +309,7 @@ export const McqView: React.FC<Props> = ({
           wrongQuestions: wrongQuestions,
           questionTimes: Object.values(remappedTime),
           performanceLabel: perfLabel,
-          topic: topicFilter, // Save topic if filtered
-          ultraAnalysisReport: ultraAnalysisReport // NEW FIELD
+          topic: topicFilter // Save topic if filtered
       };
 
       // 4. Update User Data
