@@ -1096,9 +1096,7 @@ export const PdfView: React.FC<Props> = ({
                                    );
                                })}
                            </div>
-                       </div>
-                       );
-                    )}   
+      
            <div className="bg-blue-50 p-4 rounded-xl border border-blue-100 mt-6 flex gap-3 items-start">
                <AlertCircle size={16} className="text-blue-500 mt-0.5" />
                <p className="text-xs text-blue-700 leading-relaxed">
