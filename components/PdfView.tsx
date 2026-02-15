@@ -174,6 +174,44 @@ export const PdfView: React.FC<Props> = ({
     fetchData();
   }, [chapter.id, board, classLevel, stream, subject.name, directResource]);
 
+  // AUTO-OPEN TOPIC NOTES LOGIC (Refactored to useEffect)
+  useEffect(() => {
+    if (!contentData.topicNotes || !topicFilter || activePdf) return;
+
+    // Filter Logic Replicated
+    const notes = contentData.topicNotes;
+    const grouped: Record<string, any[]> = {};
+    notes.forEach((n: any) => {
+        const t = n.topic || 'General';
+        if (!grouped[t]) grouped[t] = [];
+        grouped[t].push(n);
+    });
+
+    const normalize = (s: string) => s.trim().toLowerCase();
+    const target = normalize(topicFilter);
+    let topics = Object.keys(grouped);
+
+    // Check if topics match filter
+    topics = topics.filter(t => normalize(t) === target || normalize(t).includes(target) || target.includes(normalize(t)));
+
+    if (topics.length === 1) {
+        const notesInTopic = grouped[topics[0]];
+        if (notesInTopic.length > 0) {
+            const noteToOpen = notesInTopic[0];
+
+            // Premium Check
+            if (noteToOpen.isPremium) {
+                const isSubscribed = user.isPremium && user.subscriptionEndDate && new Date(user.subscriptionEndDate) > new Date();
+                if (isSubscribed || user.role === 'ADMIN') {
+                     if (noteToOpen.content) setActivePdf(noteToOpen.content);
+                }
+            } else {
+                 if (noteToOpen.content) setActivePdf(noteToOpen.content);
+            }
+        }
+    }
+  }, [contentData, topicFilter, activePdf, user]);
+
   const handlePdfClick = (type: 'FREE' | 'PREMIUM' | 'ULTRA') => {
       let link = '';
       let htmlContent = ''; // Support for AI Notes
@@ -798,71 +836,13 @@ export const PdfView: React.FC<Props> = ({
                            const normalize = (s: string) => s.trim().toLowerCase();
                            const target = normalize(topicFilter);
 
- revision-hub-revamp-2190173471545668082
                            topics = topics.filter(t => normalize(t) === target || normalize(t).includes(target) || target.includes(normalize(t)));
-
-                           // Revision Filter: Sort HTML first, but KEEP PDF
-                           topics = topics.filter(t => {
-                               const match = normalize(t) === target || normalize(t).includes(target) || target.includes(normalize(t));
-                               if (!match) return false;
-
-                               // Sort: HTML content first, then PDF
-                               grouped[t].sort((a, b) => {
-                                   const isAHtml = a.type === 'HTML' || a.content;
-                                   const isBHtml = b.type === 'HTML' || b.content;
-                                   if (isAHtml && !isBHtml) return -1;
-                                   if (!isAHtml && isBHtml) return 1;
-                                   return 0;
-                               });
-
-                               return true;
-                           });
-
-                           if (topics.length === 0) {
-                               // FALLBACK: If strict filter fails, show all topics with a warning
-                               // This prevents "Dummy" screen when AI name doesn't match Admin name exactly
-                               topics = Object.keys(grouped);
-
-                               return (
-                                   <div className="space-y-4 mt-6">
-                                       <div className="p-4 bg-yellow-50 text-yellow-700 text-sm font-medium rounded-xl border border-yellow-200 flex items-start gap-2">
-                                           <AlertCircle size={16} className="mt-0.5 shrink-0" />
-                                           <div>
-                                               <p className="font-bold">Exact match not found for: "{topicFilter}"</p>
-                                               <p className="text-xs mt-1">Showing all notes for this chapter. Please select the relevant topic below.</p>
-                                           </div>
-                                       </div>
- main
 
                            if (topics.length === 0) return (
                                <div className="mt-6 p-4 text-center text-slate-400 text-sm font-bold bg-slate-100 rounded-xl">
                                    No notes found for topic: {topicFilter}
                                </div>
                            );
-
-                           // AUTO-OPEN LOGIC (If only one topic match and it has notes)
-                           // Check if we haven't opened one yet (activePdf is null)
-                           if (topics.length === 1 && !activePdf) {
-                               const notesInTopic = grouped[topics[0]];
-                               if (notesInTopic.length > 0) {
-                                   const noteToOpen = notesInTopic[0]; // Open the first one
-                                   // Use a timeout to avoid render-cycle conflicts
-                                   setTimeout(() => {
-                                       if (!activePdf) {
-                                            // Handle Premium Logic Reuse
-                                            if (noteToOpen.isPremium) {
-                                                const isSubscribed = user.isPremium && user.subscriptionEndDate && new Date(user.subscriptionEndDate) > new Date();
-                                                if (isSubscribed || user.role === 'ADMIN') {
-                                                    if (noteToOpen.content) setActivePdf(noteToOpen.content);
-                                                }
-                                                // If premium and not subscribed, we don't auto-open, user sees list with lock
-                                            } else {
-                                                if (noteToOpen.content) setActivePdf(noteToOpen.content);
-                                            }
-                                       }
-                                   }, 500);
-                               }
-                           }
                        }
 
                        return (

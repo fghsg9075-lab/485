@@ -13,3 +13,5 @@ Port 5000 is in use, trying another one...
 1:19:46 AM [vite] (client) hmr update /components/RevisionSession.tsx
 1:55:28 AM [vite] (client) hmr update /components/RevisionHub.tsx
 1:57:43 AM [vite] (client) hmr update /App.tsx, /components/ErrorBoundary.tsx, /components/ChapterSelection.tsx, /components/LessonView.tsx, /components/Auth.tsx, /components/PremiumModal.tsx, /components/StudentDashboard.tsx, /components/MarksheetCard.tsx, /components/AdminDashboard.tsx, /components/RevisionHub.tsx, /components/StudentAiAssistant.tsx, /components/admin/ChallengeCreator20.tsx, /components/RedeemSection.tsx, /components/VideoPlaylistView.tsx, /components/AudioPlaylistView.tsx, /components/PdfView.tsx, /components/McqView.tsx, /components/HistoryPage.tsx, /components/UniversalInfoPage.tsx, /components/UniversalChat.tsx, /components/AiHistoryPage.tsx, /components/AiDeepAnalysis.tsx, /components/CustomBloggerPage.tsx, /components/ReferralPopup.tsx, /components/RevisionSession.tsx
+2:20:45 AM [vite] (client) hmr update /components/PdfView.tsx
+2:21:26 AM [vite] (client) hmr update /components/PdfView.tsx
