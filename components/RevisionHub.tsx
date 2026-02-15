@@ -425,104 +425,123 @@ export const RevisionHub: React.FC<Props> = ({ user, onTabChange, settings, onNa
                         );
                     }
 
+                    // GROUP BY CHAPTER
+                    const groupedTopics: Record<string, { chapterName: string, items: TopicItem[] }> = {};
+                    displayedTopics.forEach(t => {
+                        const key = t.chapterId;
+                        if (!groupedTopics[key]) {
+                            groupedTopics[key] = { chapterName: t.chapterName, items: [] };
+                        }
+                        groupedTopics[key].items.push(t);
+                    });
+
                     return (
-                        <div className="space-y-3">
-                            {displayedTopics.map((topic, idx) => {
-                                const due = new Date(topic.nextRevision);
-                                const now = new Date();
-                                const diffTime = due.getTime() - now.getTime();
-                                const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
-
-                                let dueLabel = '';
-                                let dueColor = 'text-slate-400';
-                                const isDue = diffDays <= 0;
-
-                                if (isDue) {
-                                    dueLabel = 'Due Today';
-                                    dueColor = 'text-red-600 font-black animate-pulse';
-                                } else if (diffDays === 1) {
-                                    dueLabel = 'Tomorrow';
-                                    dueColor = 'text-orange-500 font-bold';
-                                } else {
-                                    dueLabel = `${diffDays} Days Left`;
-                                    dueColor = 'text-blue-500 font-bold';
-                                }
-
-                                // OMR BAR STYLE LOGIC
-                                let barColor = 'bg-blue-500';
-                                let barWidth = '60%';
-
-                                if (topic.status === 'WEAK') { barColor = 'bg-red-500'; barWidth = '30%'; }
-                                else if (topic.status === 'STRONG') { barColor = 'bg-green-500'; barWidth = '90%'; }
-                                else { barColor = 'bg-orange-500'; barWidth = '60%'; }
-
-                                return (
-                                    <div key={idx} className="bg-white p-3 rounded-xl border border-slate-200 shadow-sm hover:shadow-md transition-all">
-                                        {/* HEADER: TITLE + DUE DATE */}
-                                        <div className="flex justify-between items-start mb-2">
-                                            <div className="flex-1 pr-2">
-                                                {topic.isSubTopic && (
-                                                    <span className="text-[9px] font-bold text-slate-400 uppercase tracking-wider block">
-                                                        {topic.chapterName}
-                                                    </span>
-                                                )}
-                                                <h4 className="font-bold text-slate-800 text-sm truncate">{topic.name}</h4>
-                                            </div>
-                                            <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full ${isDue ? 'bg-red-100 text-red-600 animate-pulse' : 'bg-slate-100 text-slate-500'}`}>
-                                                {isDue ? 'TODAY' : dueLabel}
-                                            </span>
-                                        </div>
-
-                                        {/* PROGRESS BAR (OMR Style) */}
-                                        <div className="mb-3">
-                                            <div className="flex justify-between items-end mb-1">
-                                                <span className={`text-[10px] font-black uppercase ${topic.status === 'WEAK' ? 'text-red-500' : topic.status === 'STRONG' ? 'text-green-600' : 'text-orange-500'}`}>
-                                                    {topic.status}
-                                                </span>
-                                                {/* Hidden score if vague subtopic */}
-                                                <span className="text-[10px] text-slate-400 font-bold">
-                                                    {Math.round(topic.score)}%
-                                                </span>
-                                            </div>
-                                            <div className="h-2 w-full bg-slate-100 rounded-full overflow-hidden">
-                                                <div className={`h-full ${barColor} transition-all duration-1000`} style={{ width: barWidth }}></div>
-                                            </div>
-                                        </div>
-
-                                        {/* ACTIONS (Only Active if Due, else "Locked" View) */}
-                                        {isDue ? (
-                                            <div className="grid grid-cols-2 gap-2">
-                                                <button
-                                                    onClick={() => onNavigateContent ? onNavigateContent('PDF', topic.chapterId, topic.isSubTopic ? topic.name : undefined, topic.subjectName) : null}
-                                                    className="w-full bg-blue-600 text-white py-2 rounded-lg text-xs font-bold hover:bg-blue-700 shadow-lg shadow-blue-200 transition-all flex items-center justify-center gap-2 active:scale-95"
-                                                >
-                                                    <FileText size={14} /> Read Notes
-                                                </button>
-
-                                                <button
-                                                    onClick={() => onNavigateContent ? onNavigateContent('MCQ', topic.chapterId, topic.isSubTopic ? topic.name : undefined, topic.subjectName) : null}
-                                                    className="w-full bg-white text-slate-700 border border-slate-200 py-2 rounded-lg text-xs font-bold hover:bg-slate-50 transition-all flex items-center justify-center gap-2 active:scale-95"
-                                                >
-                                                    <CheckSquare size={14} /> MCQ
-                                                </button>
-                                            </div>
-                                        ) : (
-                                            <div className="flex items-center justify-between bg-slate-50 p-2 rounded-lg border border-slate-100">
-                                                <div className="flex items-center gap-2 text-slate-400">
-                                                    <Clock size={14} />
-                                                    <span className="text-[10px] font-bold">Locked until due date</span>
-                                                </div>
-                                                <button
-                                                    onClick={() => onNavigateContent ? onNavigateContent('PDF', topic.chapterId, topic.isSubTopic ? topic.name : undefined, topic.subjectName) : null}
-                                                    className="text-[10px] font-black text-blue-600 hover:underline flex items-center gap-1"
-                                                >
-                                                    <Unlock size={10} /> Revise Early
-                                                </button>
-                                            </div>
-                                        )}
+                        <div className="space-y-4">
+                            {Object.values(groupedTopics).map((group, gIdx) => (
+                                <div key={gIdx} className="bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden">
+                                    {/* CHAPTER HEADER */}
+                                    <div className="bg-slate-50 px-4 py-3 border-b border-slate-100 flex justify-between items-center">
+                                        <h4 className="font-black text-slate-800 text-sm truncate flex items-center gap-2">
+                                            <div className="w-2 h-2 rounded-full bg-slate-400"></div>
+                                            {group.chapterName}
+                                        </h4>
+                                        <span className="text-[10px] font-bold bg-white px-2 py-0.5 rounded border border-slate-200 text-slate-500">
+                                            {group.items.length} Sub-Topics
+                                        </span>
                                     </div>
-                                );
-                            })}
+
+                                    <div className="divide-y divide-slate-50">
+                                        {group.items.map((topic, idx) => {
+                                            const due = new Date(topic.nextRevision);
+                                            const now = new Date();
+                                            const diffTime = due.getTime() - now.getTime();
+                                            const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+
+                                            let dueLabel = '';
+                                            const isDue = diffDays <= 0;
+
+                                            if (isDue) {
+                                                dueLabel = 'TODAY';
+                                            } else if (diffDays === 1) {
+                                                dueLabel = 'Tomorrow';
+                                            } else {
+                                                dueLabel = `${diffDays} Days`;
+                                            }
+
+                                            // OMR BAR STYLE LOGIC
+                                            let barColor = 'bg-blue-500';
+                                            let barWidth = '60%';
+
+                                            if (topic.status === 'WEAK') { barColor = 'bg-red-500'; barWidth = '30%'; }
+                                            else if (topic.status === 'STRONG') { barColor = 'bg-green-500'; barWidth = '90%'; }
+                                            else { barColor = 'bg-orange-500'; barWidth = '60%'; }
+
+                                            return (
+                                                <div key={idx} className="p-4 hover:bg-slate-50 transition-colors">
+                                                    <div className="flex justify-between items-start mb-2">
+                                                        <div className="flex-1 pr-2">
+                                                            <h5 className="font-bold text-slate-700 text-sm">{topic.name}</h5>
+                                                            {/* PROGRESS BAR (OMR Style) */}
+                                                            <div className="mt-2 w-full max-w-[200px]">
+                                                                <div className="flex justify-between items-end mb-1">
+                                                                    <span className={`text-[9px] font-black uppercase ${topic.status === 'WEAK' ? 'text-red-500' : topic.status === 'STRONG' ? 'text-green-600' : 'text-orange-500'}`}>
+                                                                        {topic.status}
+                                                                    </span>
+                                                                    <span className="text-[9px] text-slate-400 font-bold">
+                                                                        {Math.round(topic.score)}%
+                                                                    </span>
+                                                                </div>
+                                                                <div className="h-1.5 w-full bg-slate-100 rounded-full overflow-hidden border border-slate-100">
+                                                                    <div className={`h-full ${barColor} transition-all duration-1000`} style={{ width: barWidth }}></div>
+                                                                </div>
+                                                            </div>
+                                                        </div>
+
+                                                        {/* TIME BADGE */}
+                                                        <div className="flex flex-col items-end gap-1">
+                                                            <span className={`text-[10px] font-black px-2 py-0.5 rounded-full ${isDue ? 'bg-red-100 text-red-600 animate-pulse' : 'bg-slate-100 text-slate-500'}`}>
+                                                                {dueLabel}
+                                                            </span>
+                                                            {!isDue && (
+                                                                <span className="text-[9px] text-slate-300 font-bold flex items-center gap-1">
+                                                                    <Clock size={10} /> Wait
+                                                                </span>
+                                                            )}
+                                                        </div>
+                                                    </div>
+
+                                                    {/* ACTIONS */}
+                                                    <div className="mt-3 flex gap-2">
+                                                        {isDue ? (
+                                                            <>
+                                                                <button
+                                                                    onClick={() => onNavigateContent ? onNavigateContent('PDF', topic.chapterId, topic.isSubTopic ? topic.name : undefined, topic.subjectName) : null}
+                                                                    className="flex-1 bg-blue-600 text-white py-2 rounded-lg text-xs font-bold hover:bg-blue-700 shadow-sm transition-all flex items-center justify-center gap-2 active:scale-95"
+                                                                >
+                                                                    <FileText size={14} /> Read
+                                                                </button>
+                                                                <button
+                                                                    onClick={() => onNavigateContent ? onNavigateContent('MCQ', topic.chapterId, topic.isSubTopic ? topic.name : undefined, topic.subjectName) : null}
+                                                                    className="flex-1 bg-white text-slate-700 border border-slate-200 py-2 rounded-lg text-xs font-bold hover:bg-slate-50 transition-all flex items-center justify-center gap-2 active:scale-95"
+                                                                >
+                                                                    <CheckSquare size={14} /> MCQ
+                                                                </button>
+                                                            </>
+                                                        ) : (
+                                                            <button
+                                                                onClick={() => onNavigateContent ? onNavigateContent('PDF', topic.chapterId, topic.isSubTopic ? topic.name : undefined, topic.subjectName) : null}
+                                                                className="w-full text-center text-[10px] font-black text-blue-400 hover:text-blue-600 hover:underline py-1 transition-colors flex items-center justify-center gap-1"
+                                                            >
+                                                                <Unlock size={10} /> Unlock & Revise Early
+                                                            </button>
+                                                        )}
+                                                    </div>
+                                                </div>
+                                            );
+                                        })}
+                                    </div>
+                                </div>
+                            ))}
                         </div>
                     );
                 })()}
