@@ -1,11 +1,11 @@
 
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef, useMemo } from 'react';
 import ReactMarkdown from 'react-markdown';
 import remarkMath from 'remark-math';
 import rehypeKatex from 'rehype-katex';
 import 'katex/dist/katex.min.css';
 import { Chapter, User, Subject, SystemSettings, HtmlModule, PremiumNoteSlot } from '../types';
-import { FileText, Lock, ArrowLeft, Crown, Star, CheckCircle, AlertCircle, Globe, Maximize, Layers, HelpCircle, Minus, Plus, Volume2, Square, Zap } from 'lucide-react';
+import { FileText, Lock, ArrowLeft, Crown, Star, CheckCircle, AlertCircle, Globe, Maximize, Layers, HelpCircle, Minus, Plus, Volume2, Square, Zap, CheckSquare } from 'lucide-react';
 import { CustomAlert } from './CustomDialogs';
 import { getChapterData, saveUserToLive } from '../firebase';
 import { CreditConfirmationModal } from './CreditConfirmationModal';
@@ -165,14 +165,6 @@ export const PdfView: React.FC<Props> = ({
             if (stored) data = JSON.parse(stored);
         }
 
-        // REVISION HUB CONTENT FIX: Ensure topicNotes are preserved
-        if (data && !data.topicNotes) {
-             // Fallback: Check if this chapter has separate topic-note saves?
-             // Currently Admin saves everything to one object.
-             // If topic notes are missing, it might be the wrong key.
-             // We can try to fuzzy match if needed, but strict is better.
-        }
-
         setContentData(data || {});
       } catch (error) {
         console.error("Error loading PDF data:", error);
@@ -183,6 +175,90 @@ export const PdfView: React.FC<Props> = ({
 
     fetchData();
   }, [chapter.id, board, classLevel, stream, subject.name, directResource]);
+
+  // --- FILTERED DATA LOGIC (MOVED OUT OF RENDER) ---
+  const filteredTopicData = useMemo(() => {
+      if (!contentData.topicNotes || contentData.topicNotes.length === 0 || contentData.isTopicNotesHidden || settings?.areTopicNotesHiddenGlobally) {
+          return null;
+      }
+
+      const notes = contentData.topicNotes;
+      const grouped: Record<string, any[]> = {};
+      notes.forEach((n: any) => {
+           const t = n.topic || 'General';
+           if (!grouped[t]) grouped[t] = [];
+           grouped[t].push(n);
+      });
+
+      let topics = Object.keys(grouped);
+      let isExactMatch = true;
+
+      if (topicFilter) {
+           const normalize = (s: string) => s.trim().toLowerCase();
+           const target = normalize(topicFilter);
+
+           const filteredTopics = topics.filter(t => {
+                const normT = normalize(t);
+                const match = normT === target || normT.includes(target) || target.includes(normT);
+
+                if (match) {
+                    // Sort: HTML content first
+                    grouped[t].sort((a, b) => {
+                        const isAHtml = a.type === 'HTML' || a.content;
+                        const isBHtml = b.type === 'HTML' || b.content;
+                        if (isAHtml && !isBHtml) return -1;
+                        if (!isAHtml && isBHtml) return 1;
+                        return 0;
+                    });
+                }
+                return match;
+           });
+
+           if (filteredTopics.length > 0) {
+               topics = filteredTopics;
+           } else {
+               isExactMatch = false; // Fallback to showing all
+           }
+      }
+
+      return { topics, grouped, isExactMatch };
+  }, [contentData, topicFilter, settings]);
+
+  // --- AUTO-OPEN EFFECT ---
+  useEffect(() => {
+      // Auto-open only if:
+      // 1. Data is ready (not loading)
+      // 2. We have a filtered result
+      // 3. It's an exact/successful match with only 1 topic
+      // 4. No PDF is currently open
+      if (!loading && filteredTopicData && filteredTopicData.isExactMatch && filteredTopicData.topics.length === 1 && !activePdf) {
+          const topic = filteredTopicData.topics[0];
+          const notesInTopic = filteredTopicData.grouped[topic];
+          // Prefer HTML
+          const htmlNote = notesInTopic.find((n: any) => n.type === 'HTML' || n.content);
+          const noteToOpen = htmlNote || notesInTopic[0];
+
+          if (noteToOpen) {
+               const timer = setTimeout(() => {
+                   // Handle Premium Logic
+                   let shouldOpen = true;
+                   if (noteToOpen.isPremium) {
+                        const isSubscribed = user.isPremium && user.subscriptionEndDate && new Date(user.subscriptionEndDate) > new Date();
+                        // Allow Admin or Subscribed
+                        if (!isSubscribed && user.role !== 'ADMIN') {
+                            shouldOpen = false;
+                        }
+                   }
+
+                   // Check if we already have an active PDF to prevent race conditions
+                   if (shouldOpen && noteToOpen.content) {
+                       setActivePdf(prev => prev ? prev : noteToOpen.content);
+                   }
+               }, 500); // 500ms delay for smooth transition
+               return () => clearTimeout(timer);
+          }
+      }
+  }, [filteredTopicData, loading, user]); // Removed activePdf dependency to avoid loop, checking it inside effect callback or using callback setter
 
   const handlePdfClick = (type: 'FREE' | 'PREMIUM' | 'ULTRA') => {
       let link = '';
@@ -574,7 +650,7 @@ export const PdfView: React.FC<Props> = ({
                                    }
                                }
 
-                               // Enhanced HTML Detection: Check for specific HTML tags even if content doesn't start with '<'
+                               // Enhanced HTML Detection
                                const hasHtmlTags = /<(a|iframe|video|audio|source|track|canvas|svg|path|circle|rect|line|polyline|polygon|text|g|defs|marker|clipPath|style|script|link|meta|head|title|body|html|hr|input|button|select|textarea|form|label|option|optgroup|fieldset|legend|datalist|output|progress|meter|details|summary|dialog|h[1-6]|p|div|ul|ol|li|table|tr|td|th|br|img|span|b|i|strong|em|small|big|mark|blockquote|pre|code|center|font|u|s|sub|sup|dl|dt|dd|figure|figcaption|article|section|header|footer|nav|aside|main)\b/i.test(contentToRender);
                                const isHtml = contentToRender.trim().startsWith('<') || (hasHtmlTags && !contentToRender.includes('```'));
 
@@ -803,208 +879,82 @@ export const PdfView: React.FC<Props> = ({
                        );
                    })()}
 
-                   {/* TOPIC NOTES SECTION */}
-                   {contentData.topicNotes && contentData.topicNotes.length > 0 && !contentData.isTopicNotesHidden && !settings?.areTopicNotesHiddenGlobally && (() => {
-                       const notes = contentData.topicNotes;
-                       // Group by Topic
-                       const grouped: Record<string, any[]> = {};
-                       notes.forEach((n: any) => {
-                           const t = n.topic || 'General';
-                           if (!grouped[t]) grouped[t] = [];
-                           grouped[t].push(n);
-                       });
+                   {/* TOPIC NOTES SECTION (REFACTORED) */}
+                   {filteredTopicData && (
+                       <div className="space-y-4 mt-6">
+                           {!filteredTopicData.isExactMatch && (
+                               <div className="p-4 bg-yellow-50 text-yellow-700 text-sm font-medium rounded-xl border border-yellow-200 flex items-start gap-2">
+                                   <AlertCircle size={16} className="mt-0.5 shrink-0" />
+                                   <div>
+                                       <p className="font-bold">Exact match not found for: "{topicFilter}"</p>
+                                       <p className="text-xs mt-1">Showing all notes for this chapter. Please select the relevant topic below.</p>
+                                   </div>
+                               </div>
+                           )}
 
-                       let topics = Object.keys(grouped);
+                           <h4 className="font-bold text-slate-800 flex items-center gap-2 px-1">
+                               <FileText size={18} className="text-orange-600" /> {filteredTopicData.isExactMatch && topicFilter ? `${topicFilter} Notes` : 'Topic Notes'}
+                           </h4>
 
-                       // Apply Filter
-                       if (topicFilter) {
-                           // Case-insensitive, trimmed comparison
-                           const normalize = (s: string) => s.trim().toLowerCase();
-                           const target = normalize(topicFilter);
-
-                           // Revision Filter: Sort HTML first, but KEEP PDF
-                           topics = topics.filter(t => {
-                               const match = normalize(t) === target || normalize(t).includes(target) || target.includes(normalize(t));
-                               if (!match) return false;
-
-                               // Sort: HTML content first, then PDF
-                               grouped[t].sort((a, b) => {
-                                   const isAHtml = a.type === 'HTML' || a.content;
-                                   const isBHtml = b.type === 'HTML' || b.content;
-                                   if (isAHtml && !isBHtml) return -1;
-                                   if (!isAHtml && isBHtml) return 1;
-                                   return 0;
-                               });
-
-                               return true;
-                           });
-
-                           if (topics.length === 0) {
-                               // FALLBACK: If strict filter fails, show all topics with a warning
-                               // This prevents "Dummy" screen when AI name doesn't match Admin name exactly
-                               topics = Object.keys(grouped);
-
-                               return (
-                                   <div className="space-y-4 mt-6">
-                                       <div className="p-4 bg-yellow-50 text-yellow-700 text-sm font-medium rounded-xl border border-yellow-200 flex items-start gap-2">
-                                           <AlertCircle size={16} className="mt-0.5 shrink-0" />
-                                           <div>
-                                               <p className="font-bold">Exact match not found for: "{topicFilter}"</p>
-                                               <p className="text-xs mt-1">Showing all notes for this chapter. Please select the relevant topic below.</p>
-                                           </div>
+                           <div className="space-y-3">
+                               {filteredTopicData.topics.map((topic, idx) => (
+                                   <div key={idx} className="bg-white rounded-2xl border border-orange-100/50 shadow-sm overflow-hidden mb-3">
+                                       <div className="bg-gradient-to-r from-orange-50 to-white px-4 py-3 flex items-center justify-between border-b border-orange-50">
+                                           <h5 className="font-black text-orange-900 text-sm flex items-center gap-2">
+                                               <div className="w-2 h-2 rounded-full bg-orange-500"></div>
+                                               {topic}
+                                           </h5>
+                                           <span className="text-[10px] font-bold text-orange-600 bg-white px-2 py-0.5 rounded-full border border-orange-100 shadow-sm">
+                                               {filteredTopicData.grouped[topic].length} Notes
+                                           </span>
                                        </div>
-
-                                       <h4 className="font-bold text-slate-800 flex items-center gap-2 px-1">
-                                           <FileText size={18} className="text-orange-600" /> All Topic Notes
-                                       </h4>
-
-                                       <div className="space-y-3">
-                                           {topics.map((topic, idx) => (
-                                               <div key={idx} className="bg-white rounded-2xl border border-orange-100/50 shadow-sm overflow-hidden mb-3">
-                                                   <div className="bg-gradient-to-r from-orange-50 to-white px-4 py-3 flex items-center justify-between border-b border-orange-50">
-                                                       <h5 className="font-black text-orange-900 text-sm flex items-center gap-2">
-                                                           <div className="w-2 h-2 rounded-full bg-orange-500"></div>
-                                                           {topic}
-                                                       </h5>
-                                                       <span className="text-[10px] font-bold text-orange-600 bg-white px-2 py-0.5 rounded-full border border-orange-100 shadow-sm">
-                                                           {grouped[topic].length} Notes
-                                                       </span>
+                                       <div className="p-3 space-y-2">
+                                           {filteredTopicData.grouped[topic].map((note: any, nIdx: number) => (
+                                               <button
+                                                   key={nIdx}
+                                                   onClick={() => {
+                                                       if (note.isPremium) {
+                                                           const isSubscribed = user.isPremium && user.subscriptionEndDate && new Date(user.subscriptionEndDate) > new Date();
+                                                           if (!isSubscribed && user.role !== 'ADMIN') {
+                                                                setAlertConfig({isOpen: true, message: "🔒 Premium Content! Please upgrade your plan to access this note."});
+                                                                return;
+                                                           }
+                                                       }
+                                                       // Open Content
+                                                       if (note.content) {
+                                                           setActivePdf(note.content);
+                                                       } else if (note.url) {
+                                                           setActivePdf(note.url);
+                                                       } else {
+                                                           setAlertConfig({isOpen: true, message: "Empty content."});
+                                                       }
+                                                   }}
+                                                   className="w-full text-left p-3 rounded-xl bg-slate-50 hover:bg-white hover:shadow-md hover:border-orange-200 border border-transparent transition-all group flex items-center justify-between"
+                                               >
+                                                   <div className="flex items-center gap-3">
+                                                       <div className={`w-10 h-10 rounded-xl flex items-center justify-center shadow-sm ${note.isPremium ? 'bg-purple-100 text-purple-600' : 'bg-white text-slate-500 border border-slate-100'}`}>
+                                                           {note.isPremium ? <Crown size={16} fill="currentColor" /> : <FileText size={16} />}
+                                                       </div>
+                                                       <div>
+                                                           <span className="text-sm font-bold text-slate-700 group-hover:text-orange-600 transition-colors line-clamp-1 block">{note.title || 'Untitled Note'}</span>
+                                                           <span className="text-[10px] text-slate-400 font-medium">Click to Read</span>
+                                                       </div>
                                                    </div>
-                                                   <div className="p-3 space-y-2">
-                                                       {grouped[topic].map((note, nIdx) => (
-                                                           <button
-                                                               key={nIdx}
-                                                               onClick={() => {
-                                                                   if (note.isPremium) {
-                                                                       const isSubscribed = user.isPremium && user.subscriptionEndDate && new Date(user.subscriptionEndDate) > new Date();
-                                                                       if (!isSubscribed && user.role !== 'ADMIN') {
-                                                                            setAlertConfig({isOpen: true, message: "🔒 Premium Content! Please upgrade your plan to access this note."});
-                                                                            return;
-                                                                       }
-                                                                   }
-                                                                   if (note.content) setActivePdf(note.content);
-                                                                   else if (note.url) setActivePdf(note.url); // Fallback to URL if content missing
-                                                                   else setAlertConfig({isOpen: true, message: "Empty content."});
-                                                               }}
-                                                               className="w-full text-left p-3 rounded-xl bg-slate-50 hover:bg-white hover:shadow-md hover:border-orange-200 border border-transparent transition-all group flex items-center justify-between"
-                                                           >
-                                                               <div className="flex items-center gap-3">
-                                                                   <div className={`w-10 h-10 rounded-xl flex items-center justify-center shadow-sm ${note.isPremium ? 'bg-purple-100 text-purple-600' : 'bg-white text-slate-500 border border-slate-100'}`}>
-                                                                       {note.isPremium ? <Crown size={16} fill="currentColor" /> : <FileText size={16} />}
-                                                                   </div>
-                                                                   <div>
-                                                                       <span className="text-sm font-bold text-slate-700 group-hover:text-orange-600 transition-colors line-clamp-1 block">{note.title || 'Untitled Note'}</span>
-                                                                       <span className="text-[10px] text-slate-400 font-medium">Click to Read</span>
-                                                                   </div>
-                                                               </div>
-                                                               {note.isPremium ? (
-                                                                   <Lock size={14} className="text-purple-400" />
-                                                               ) : (
-                                                                   <div className="w-6 h-6 rounded-full bg-white flex items-center justify-center text-slate-300 group-hover:text-green-500 transition-colors">
-                                                                       <ArrowLeft size={12} className="rotate-180" />
-                                                                   </div>
-                                                               )}
-                                                           </button>
-                                                       ))}
-                                                   </div>
-                                               </div>
+                                                   {note.isPremium ? (
+                                                       <Lock size={14} className="text-purple-400" />
+                                                   ) : (
+                                                       <div className="w-6 h-6 rounded-full bg-white flex items-center justify-center text-slate-300 group-hover:text-green-500 transition-colors">
+                                                           <ArrowLeft size={12} className="rotate-180" />
+                                                       </div>
+                                                   )}
+                                               </button>
                                            ))}
                                        </div>
                                    </div>
-                               );
-                           }
-
-                           // AUTO-OPEN LOGIC (If only one topic match and it has notes)
-                           // Check if we haven't opened one yet (activePdf is null)
-                           if (topics.length === 1 && !activePdf) {
-                               const notesInTopic = grouped[topics[0]];
-                               // Prefer HTML
-                               const htmlNote = notesInTopic.find(n => n.type === 'HTML' || n.content);
-                               const noteToOpen = htmlNote || notesInTopic[0];
-
-                               if (noteToOpen) {
-                                   // Use a timeout to avoid render-cycle conflicts
-                                   setTimeout(() => {
-                                       if (!activePdf) {
-                                            // Handle Premium Logic Reuse
-                                            if (noteToOpen.isPremium) {
-                                                const isSubscribed = user.isPremium && user.subscriptionEndDate && new Date(user.subscriptionEndDate) > new Date();
-                                                if (isSubscribed || user.role === 'ADMIN') {
-                                                    if (noteToOpen.content) setActivePdf(noteToOpen.content);
-                                                }
-                                                // If premium and not subscribed, we don't auto-open, user sees list with lock
-                                            } else {
-                                                if (noteToOpen.content) setActivePdf(noteToOpen.content);
-                                            }
-                                       }
-                                   }, 500);
-                               }
-                           }
-                       }
-
-                       return (
-                           <div className="space-y-4 mt-6">
-                               <h4 className="font-bold text-slate-800 flex items-center gap-2 px-1">
-                                   <FileText size={18} className="text-orange-600" /> {topicFilter ? `${topicFilter} Notes` : 'Topic Notes'}
-                               </h4>
-                               <div className="space-y-3">
-                                   {topics.map((topic, idx) => (
-                                       <div key={idx} className="bg-white rounded-2xl border border-orange-100/50 shadow-sm overflow-hidden mb-3">
-                                           <div className="bg-gradient-to-r from-orange-50 to-white px-4 py-3 flex items-center justify-between border-b border-orange-50">
-                                               <h5 className="font-black text-orange-900 text-sm flex items-center gap-2">
-                                                   <div className="w-2 h-2 rounded-full bg-orange-500"></div>
-                                                   {topic}
-                                               </h5>
-                                               <span className="text-[10px] font-bold text-orange-600 bg-white px-2 py-0.5 rounded-full border border-orange-100 shadow-sm">
-                                                   {grouped[topic].length} Notes
-                                               </span>
-                                           </div>
-                                           <div className="p-3 space-y-2">
-                                               {grouped[topic].map((note, nIdx) => (
-                                                   <button
-                                                       key={nIdx}
-                                                       onClick={() => {
-                                                           if (note.isPremium) {
-                                                               const isSubscribed = user.isPremium && user.subscriptionEndDate && new Date(user.subscriptionEndDate) > new Date();
-                                                               if (!isSubscribed && user.role !== 'ADMIN') {
-                                                                    setAlertConfig({isOpen: true, message: "🔒 Premium Content! Please upgrade your plan to access this note."});
-                                                                    return;
-                                                               }
-                                                           }
-                                                           // Open Content
-                                                           if (note.content) {
-                                                               setActivePdf(note.content);
-                                                           } else {
-                                                               setAlertConfig({isOpen: true, message: "Empty content."});
-                                                           }
-                                                       }}
-                                                       className="w-full text-left p-3 rounded-xl bg-slate-50 hover:bg-white hover:shadow-md hover:border-orange-200 border border-transparent transition-all group flex items-center justify-between"
-                                                   >
-                                                       <div className="flex items-center gap-3">
-                                                           <div className={`w-10 h-10 rounded-xl flex items-center justify-center shadow-sm ${note.isPremium ? 'bg-purple-100 text-purple-600' : 'bg-white text-slate-500 border border-slate-100'}`}>
-                                                               {note.isPremium ? <Crown size={16} fill="currentColor" /> : <FileText size={16} />}
-                                                           </div>
-                                                           <div>
-                                                               <span className="text-sm font-bold text-slate-700 group-hover:text-orange-600 transition-colors line-clamp-1 block">{note.title || 'Untitled Note'}</span>
-                                                               <span className="text-[10px] text-slate-400 font-medium">Click to Read</span>
-                                                           </div>
-                                                       </div>
-                                                       {note.isPremium ? (
-                                                           <Lock size={14} className="text-purple-400" />
-                                                       ) : (
-                                                           <div className="w-6 h-6 rounded-full bg-white flex items-center justify-center text-slate-300 group-hover:text-green-500 transition-colors">
-                                                               <ArrowLeft size={12} className="rotate-180" />
-                                                           </div>
-                                                       )}
-                                                   </button>
-                                               ))}
-                                           </div>
-                                       </div>
-                                   ))}
-                               </div>
+                               ))}
                            </div>
-                       );
-                   })()}
+                       </div>
+                   )}
 
                    {/* HTML MODULES */}
                    {contentData.htmlModules && contentData.htmlModules.map((mod: any, idx: number) => {
