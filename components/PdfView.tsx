@@ -794,12 +794,41 @@ export const PdfView: React.FC<Props> = ({
 
                        // Apply Filter
                        if (topicFilter) {
-                           topics = topics.filter(t => t === topicFilter);
+                           // Case-insensitive, trimmed comparison
+                           const normalize = (s: string) => s.trim().toLowerCase();
+                           const target = normalize(topicFilter);
+
+                           topics = topics.filter(t => normalize(t) === target || normalize(t).includes(target) || target.includes(normalize(t)));
+
                            if (topics.length === 0) return (
                                <div className="mt-6 p-4 text-center text-slate-400 text-sm font-bold bg-slate-100 rounded-xl">
                                    No notes found for topic: {topicFilter}
                                </div>
                            );
+
+                           // AUTO-OPEN LOGIC (If only one topic match and it has notes)
+                           // Check if we haven't opened one yet (activePdf is null)
+                           if (topics.length === 1 && !activePdf) {
+                               const notesInTopic = grouped[topics[0]];
+                               if (notesInTopic.length > 0) {
+                                   const noteToOpen = notesInTopic[0]; // Open the first one
+                                   // Use a timeout to avoid render-cycle conflicts
+                                   setTimeout(() => {
+                                       if (!activePdf) {
+                                            // Handle Premium Logic Reuse
+                                            if (noteToOpen.isPremium) {
+                                                const isSubscribed = user.isPremium && user.subscriptionEndDate && new Date(user.subscriptionEndDate) > new Date();
+                                                if (isSubscribed || user.role === 'ADMIN') {
+                                                    if (noteToOpen.content) setActivePdf(noteToOpen.content);
+                                                }
+                                                // If premium and not subscribed, we don't auto-open, user sees list with lock
+                                            } else {
+                                                if (noteToOpen.content) setActivePdf(noteToOpen.content);
+                                            }
+                                       }
+                                   }, 500);
+                               }
+                           }
                        }
 
                        return (
