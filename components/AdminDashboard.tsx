@@ -2607,6 +2607,28 @@ const AdminDashboardInner: React.FC<Props> = ({ onNavigate, settings, onUpdateSe
 
                   <SubjectSelector />
 
+                  {/* IMPORT TOOL (New Requirement) */}
+                  <div className="mb-6 p-4 bg-white rounded-xl border-2 border-dashed border-cyan-300">
+                      <h4 className="font-bold text-cyan-800 mb-2 flex items-center gap-2">
+                          <Upload size={18} /> Smart Import (Notes + MCQs)
+                      </h4>
+                      <p className="text-[10px] text-slate-500 mb-3">
+                          Paste text with <code>&lt;TOPIC: Name&gt;</code>, <code>&lt;NOTE: Name&gt; Content &lt;/NOTE&gt;</code>, and Questions. The system will auto-generate both Topic Notes and linked MCQs.
+                      </p>
+                      <textarea
+                          value={importText}
+                          onChange={(e) => setImportText(e.target.value)}
+                          placeholder="Paste your content here..."
+                          className="w-full h-24 p-2 border border-slate-300 rounded-lg text-xs font-mono mb-2"
+                      />
+                      <button
+                          onClick={() => handleUnifiedImport(false)} // Pass false as we are not in Test mode
+                          className="w-full py-2 bg-cyan-600 text-white font-bold rounded-lg hover:bg-cyan-700 shadow flex items-center justify-center gap-2"
+                      >
+                          <Sparkles size={16} /> Process & Create Revision Content
+                      </button>
+                  </div>
+
                   <div className="space-y-4 mb-6">
                       {!editingChapterId ? (
                           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3 max-h-[60vh] overflow-y-auto pr-2">
