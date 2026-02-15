@@ -37,14 +37,5 @@ export const storage = {
     } catch (err) {
       console.error('Error clearing localforage:', err);
     }
-  },
-
-  keys: async (): Promise<string[]> => {
-    try {
-      return await localforage.keys();
-    } catch (err) {
-      console.error('Error retrieving keys from localforage:', err);
-      return [];
-    }
   }
 };

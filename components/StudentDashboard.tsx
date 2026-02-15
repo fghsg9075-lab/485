@@ -1117,6 +1117,7 @@ export const StudentDashboard: React.FC<Props> = ({ user, dailyStudySeconds, onS
                   user={user}
                   onTabChange={onTabChange}
                   settings={settings}
+                  onUpdateUser={handleUserUpdate}
                   onNavigateContent={(type, chapterId, topicName, subjectName) => {
                       // Only for PDF/Notes now
                       setTopicFilter(topicName);
