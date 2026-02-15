@@ -266,12 +266,12 @@ export interface BannerSettings {
     textColor?: string;
 }
 
-feature-dashboard-redesign-cleanup-13635731507476622996
 export interface BannerItem {
     id: string;
     imageUrl: string;
     actionUrl?: string; // Optional link
     isActive: boolean;
+}
 
 export interface ExploreBanner {
     id: string;
@@ -319,7 +319,6 @@ export interface SystemSettings {
   mcqAnalysisCost?: number;
   appShortName?: string; // e.g. "IIC"
   officialAppUrl?: string; // NEW: Play Store Link
-  exploreBanners?: BannerItem[]; // NEW: Explore Page Banners
   bannerConfig?: {
       top: BannerSettings;
       bottom: BannerSettings;

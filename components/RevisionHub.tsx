@@ -78,12 +78,12 @@ export const RevisionHub: React.FC<Props> = ({ user, onTabChange, settings, onNa
                             // Extract Status and Logic
                             // Rules:
                             // < 50% -> 2 days (Weak)
-                            // 50-80% -> 5 days (Average)
+                            // 50-80% -> 3 days (Average)
                             // > 80% -> 7 days (Strong)
                             // 2x > 80% -> 30 days (Super Strong)
 
                             let status: TopicStatus = 'AVERAGE';
-                            let daysToAdd = 5; // Default Average
+                            let daysToAdd = 3; // Default Average (3 days per user request)
                             let score = t.score || 0; // Assuming parsed topic has score
 
                             // Re-infer score bucket if exact score missing
@@ -105,7 +105,7 @@ export const RevisionHub: React.FC<Props> = ({ user, onTabChange, settings, onNa
                                 }
                             } else {
                                 status = 'AVERAGE';
-                                daysToAdd = 5; // Changed from 3 to 5
+                                daysToAdd = 3; // Changed from 5 to 3
                                 streak = 0; // Reset streak
                             }
 
@@ -140,7 +140,7 @@ export const RevisionHub: React.FC<Props> = ({ user, onTabChange, settings, onNa
                 let streak = streakTracker.get(uniqueId) || 0;
 
                 let status: TopicStatus = 'AVERAGE';
-                let daysToAdd = 5; // Default Average
+                let daysToAdd = 3; // Default Average
 
                 if (percentage < 50) {
                     status = 'WEAK';
@@ -153,7 +153,7 @@ export const RevisionHub: React.FC<Props> = ({ user, onTabChange, settings, onNa
                     else daysToAdd = 7;
                 } else {
                     status = 'AVERAGE';
-                    daysToAdd = 5; // Changed from 3 to 5
+                    daysToAdd = 3; // Changed from 5 to 3
                     streak = 0;
                 }
 
@@ -403,7 +403,6 @@ export const RevisionHub: React.FC<Props> = ({ user, onTabChange, settings, onNa
                 {(() => {
                     let displayedTopics = topics;
                     const now = new Date();
- revision-hub-revamp-2190173471545668082
                     const endOfToday = new Date();
                     endOfToday.setHours(23, 59, 59, 999);
 
@@ -413,15 +412,6 @@ export const RevisionHub: React.FC<Props> = ({ user, onTabChange, settings, onNa
                     } else {
                         // WEAK/AVG/STRONG: Only Future Tasks (Exclude Today)
                         displayedTopics = topics.filter(t => t.status === activeFilter && new Date(t.nextRevision) > endOfToday);
-
-
-                    if (activeFilter === 'TODAY') {
-                        // STRICT: Only items Due Today or Before
-                        displayedTopics = topics.filter(t => new Date(t.nextRevision) <= now);
-                    } else {
-                        // STRICT: Only Future items of this status (Exclude Today's tasks)
-                        displayedTopics = topics.filter(t => t.status === activeFilter && new Date(t.nextRevision) > now);
- main
                     }
 
                     if (displayedTopics.length === 0) {
@@ -435,7 +425,6 @@ export const RevisionHub: React.FC<Props> = ({ user, onTabChange, settings, onNa
                     }
 
                     // GROUP BY CHAPTER
- revision-hub-revamp-2190173471545668082
                     const grouped: Record<string, TopicItem[]> = {};
                     displayedTopics.forEach(t => {
                         const key = t.chapterName;
@@ -510,96 +499,10 @@ export const RevisionHub: React.FC<Props> = ({ user, onTabChange, settings, onNa
                                                                 <div className="flex items-center gap-1 text-[10px] text-slate-400">
                                                                     <TrendingUp size={10} />
                                                                     <span>Score: {Math.round(topic.score)}%</span>
-
-                    const groupedTopics: Record<string, { chapterName: string, items: TopicItem[] }> = {};
-                    displayedTopics.forEach(t => {
-                        const key = t.chapterId;
-                        if (!groupedTopics[key]) {
-                            groupedTopics[key] = { chapterName: t.chapterName, items: [] };
-                        }
-                        groupedTopics[key].items.push(t);
-                    });
-
-                    return (
-                        <div className="space-y-4">
-                            {Object.values(groupedTopics).map((group, gIdx) => (
-                                <div key={gIdx} className="bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden">
-                                    {/* CHAPTER HEADER */}
-                                    <div className="bg-slate-50 px-4 py-3 border-b border-slate-100 flex justify-between items-center">
-                                        <h4 className="font-black text-slate-800 text-sm truncate flex items-center gap-2">
-                                            <div className="w-2 h-2 rounded-full bg-slate-400"></div>
-                                            {group.chapterName}
-                                        </h4>
-                                        <span className="text-[10px] font-bold bg-white px-2 py-0.5 rounded border border-slate-200 text-slate-500">
-                                            {group.items.length} Sub-Topics
-                                        </span>
-                                    </div>
-
-                                    <div className="divide-y divide-slate-50">
-                                        {group.items.map((topic, idx) => {
-                                            const due = new Date(topic.nextRevision);
-                                            const now = new Date();
-                                            const diffTime = due.getTime() - now.getTime();
-                                            const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
-
-                                            let dueLabel = '';
-                                            const isDue = diffDays <= 0;
-
-                                            if (isDue) {
-                                                dueLabel = 'TODAY';
-                                            } else if (diffDays === 1) {
-                                                dueLabel = 'Tomorrow';
-                                            } else {
-                                                dueLabel = `${diffDays} Days`;
-                                            }
-
-                                            // OMR BAR STYLE LOGIC
-                                            let barColor = 'bg-blue-500';
-                                            let barWidth = '60%';
-                                            let nextInterval = '3 Days';
-
-                                            if (topic.status === 'WEAK') {
-                                                barColor = 'bg-red-500';
-                                                barWidth = '30%';
-                                                nextInterval = '2 Days';
-                                            } else if (topic.status === 'STRONG') {
-                                                barColor = 'bg-green-500';
-                                                barWidth = '90%';
-                                                nextInterval = '7 Days';
-                                                // Check for 30 day mastery (rough heuristic from score if streak data unavailable in view)
-                                                if (topic.score >= 90) nextInterval = '30 Days';
-                                            } else {
-                                                barColor = 'bg-orange-500';
-                                                barWidth = '60%';
-                                                nextInterval = '3 Days';
-                                            }
-
-                                            return (
-                                                <div key={idx} className="p-4 hover:bg-slate-50 transition-colors">
-                                                    <div className="flex justify-between items-start mb-2">
-                                                        <div className="flex-1 pr-2">
-                                                            <h5 className="font-bold text-slate-700 text-sm">{topic.name}</h5>
-                                                            {/* PROGRESS BAR (OMR Style) */}
-                                                            <div className="mt-2 w-full max-w-[200px]">
-                                                                <div className="flex justify-between items-end mb-1">
-                                                                    <span className={`text-[9px] font-black uppercase ${topic.status === 'WEAK' ? 'text-red-500' : topic.status === 'STRONG' ? 'text-green-600' : 'text-orange-500'}`}>
-                                                                        {topic.status}
-                                                                    </span>
-                                                                    <span className="text-[9px] text-slate-400 font-bold">
-                                                                        {Math.round(topic.score)}%
-                                                                    </span>
-                                                                </div>
-                                                                <div className="h-1.5 w-full bg-slate-100 rounded-full overflow-hidden border border-slate-100">
-                                                                    <div className={`h-full ${barColor} transition-all duration-1000`} style={{ width: barWidth }}></div>
-                                                                </div>
-                                                                <div className="mt-1 text-[8px] text-slate-400 font-medium flex items-center gap-1">
-                                                                    <TrendingUp size={8} /> Next: {nextInterval}
- main
                                                                 </div>
                                                             </div>
                                                         </div>
 
- revision-hub-revamp-2190173471545668082
                                                         {isDue ? (
                                                             <button
                                                                 onClick={() => setCurrentSession({
@@ -621,53 +524,9 @@ export const RevisionHub: React.FC<Props> = ({ user, onTabChange, settings, onNa
                                                 );
                                             })}
                                         </div>
-
-                                                        {/* TIME BADGE */}
-                                                        <div className="flex flex-col items-end gap-1">
-                                                            <span className={`text-[10px] font-black px-2 py-0.5 rounded-full ${isDue ? 'bg-red-100 text-red-600 animate-pulse' : 'bg-slate-100 text-slate-500'}`}>
-                                                                {dueLabel}
-                                                            </span>
-                                                            {!isDue && (
-                                                                <span className="text-[9px] text-slate-300 font-bold flex items-center gap-1">
-                                                                    <Clock size={10} /> Wait
-                                                                </span>
-                                                            )}
-                                                        </div>
-                                                    </div>
-
-                                                    {/* ACTIONS */}
-                                                    <div className="mt-3 flex gap-2">
-                                                        {isDue ? (
-                                                            <>
-                                                                <button
-                                                                    onClick={() => onNavigateContent ? onNavigateContent('PDF', topic.chapterId, topic.isSubTopic ? topic.name : undefined, topic.subjectName) : null}
-                                                                    className="flex-1 bg-blue-600 text-white py-2 rounded-lg text-xs font-bold hover:bg-blue-700 shadow-sm transition-all flex items-center justify-center gap-2 active:scale-95"
-                                                                >
-                                                                    <FileText size={14} /> Read
-                                                                </button>
-                                                                <button
-                                                                    onClick={() => onNavigateContent ? onNavigateContent('MCQ', topic.chapterId, topic.isSubTopic ? topic.name : undefined, topic.subjectName) : null}
-                                                                    className="flex-1 bg-white text-slate-700 border border-slate-200 py-2 rounded-lg text-xs font-bold hover:bg-slate-50 transition-all flex items-center justify-center gap-2 active:scale-95"
-                                                                >
-                                                                    <CheckSquare size={14} /> MCQ
-                                                                </button>
-                                                            </>
-                                                        ) : (
-                                                            <button
-                                                                onClick={() => onNavigateContent ? onNavigateContent('PDF', topic.chapterId, topic.isSubTopic ? topic.name : undefined, topic.subjectName) : null}
-                                                                className="w-full text-center text-[10px] font-black text-blue-400 hover:text-blue-600 hover:underline py-1 transition-colors flex items-center justify-center gap-1"
-                                                            >
-                                                                <Unlock size={10} /> Unlock & Revise Early
-                                                            </button>
-                                                        )}
-                                                    </div>
-                                                </div>
-                                            );
-                                        })}
- main
                                     </div>
-                                </div>
-                            ))}
+                                );
+                            })}
                         </div>
                     );
                 })()}
