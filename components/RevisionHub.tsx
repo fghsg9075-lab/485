@@ -399,11 +399,14 @@ export const RevisionHub: React.FC<Props> = ({ user, onTabChange, settings, onNa
 
                 {(() => {
                     let displayedTopics = topics;
+                    const now = new Date();
+
                     if (activeFilter === 'TODAY') {
-                        const now = new Date();
-                        displayedTopics = topics.filter(t => new Date(t.nextRevision) <= now || t.status === 'WEAK');
+                        // STRICT: Only items Due Today or Before
+                        displayedTopics = topics.filter(t => new Date(t.nextRevision) <= now);
                     } else {
-                        displayedTopics = topics.filter(t => t.status === activeFilter);
+                        // STRICT: Only Future items of this status (Exclude Today's tasks)
+                        displayedTopics = topics.filter(t => t.status === activeFilter && new Date(t.nextRevision) > now);
                     }
 
                     if (displayedTopics.length === 0) {
